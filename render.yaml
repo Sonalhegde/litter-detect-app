@@ -1,0 +1,23 @@
+services:
+  - type: web
+    runtime: docker
+    name: litter-detect-inference
+    dockerfilePath: ./inference-backend/Dockerfile
+    dockerContext: ./inference-backend
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: YOLO26S_MODEL_PATH
+        value: /app/models/best.pt
+      - key: YOLO26N_MODEL_PATH
+        value: /app/models/yolo26n.pt
+      - key: INFERENCE_IMAGE_SIZE
+        value: "1280"
+      - key: INFERENCE_CONFIDENCE_THRESHOLD
+        value: "0.25"
+      - key: INFERENCE_IOU_THRESHOLD
+        value: "0.45"
+      - key: MAX_UPLOAD_MB
+        value: "10"
