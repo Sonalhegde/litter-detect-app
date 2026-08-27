@@ -2,6 +2,7 @@ services:
   - type: web
     runtime: docker
     name: litter-detect-inference
+    plan: free
     dockerfilePath: ./inference-backend/Dockerfile
     dockerContext: ./inference-backend
     healthCheckPath: /health

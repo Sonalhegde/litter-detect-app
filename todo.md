@@ -12,3 +12,6 @@
 - [ ] Provide Vercel and Render deployment handoff instructions.
 - [x] Resolve the frontend-to-inference API connectivity failure shown after image upload and verify a successful browser analysis flow.
 - [x] Rename the supplied `best.pt` checkpoint to an explicit YOLO26s backend asset name and update every backend, deployment, and documentation reference.
+- [ ] Diagnose and recover from the Vercel connector authorization callback failure (`invalid_request`) before creating the Git-linked frontend deployment.
+- [ ] Remove the environment-specific analytics loader from the standalone Vercel frontend build.
+- [ ] Configure the Render Blueprint for a free web service so deployment does not require payment-card entry.
