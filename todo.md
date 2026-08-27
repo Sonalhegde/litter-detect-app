@@ -15,3 +15,6 @@
 - [ ] Diagnose and recover from the Vercel connector authorization callback failure (`invalid_request`) before creating the Git-linked frontend deployment.
 - [ ] Remove the environment-specific analytics loader from the standalone Vercel frontend build.
 - [ ] Configure the Render Blueprint for a free web service so deployment does not require payment-card entry.
+- [ ] Recover the failed Vercel Git link with a direct production deployment and connect it to the public Render inference URL.
+- [ ] Present keep-alive scheduling alternatives and, after user confirmation, configure the selected recurring health check for the deployed Render inference service.
+- [ ] Fix the Render container’s missing OpenCV runtime libraries and verify the public health endpoint after redeployment.
