@@ -23,19 +23,19 @@ services:
       - key: YOLO26X_MODEL_PATH
         value: /app/models/yolo26x.pt
       - key: INFERENCE_IMAGE_SIZE
-        value: "640"
+        value: "320"
       - key: INFERENCE_CONFIDENCE_THRESHOLD
         value: "0.25"
       - key: INFERENCE_IOU_THRESHOLD
         value: "0.45"
       - key: MAX_UPLOAD_MB
-        value: "10"
+        value: "4"
       - key: MAX_IMAGE_WIDTH
-        value: "6000"
+        value: "3000"
       - key: MAX_IMAGE_HEIGHT
-        value: "6000"
+        value: "3000"
       - key: MAX_IMAGE_PIXELS
-        value: "20000000"
+        value: "6000000"
       - key: INFERENCE_CONCURRENCY
         value: "1"
       - key: RATE_LIMIT_REQUESTS

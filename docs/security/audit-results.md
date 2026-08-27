@@ -16,7 +16,7 @@
 | Local CORS | Allowed Vercel origin preflight returned `200` and `access-control-allow-origin`; untrusted origin returned `400` without that origin header. | Pass |
 | Controlled model smoke tests | Checksum-pinned YOLO26s loaded locally on CPU. Black, white, gradient, and noisy images completed with zero boxes. A specifically NOAA-credited public-domain marine-debris image completed with 8 returned boxes; a USGS desert image completed with zero returned boxes. See `external-verification-sources.md` for strict interpretation limits. | Pass; not a benchmark |
 | User attachments | Supplied images were screenshots, not standalone shoreline bytes; no screenshot was misrepresented as independent scene evidence. | Pass |
-| Live Render/Vercel | Requires deploy completion after current push. Production endpoints and UI must be retested from the deployed revision. | Pending |
+| Live Render/Vercel | Render deployed commit `fde0f13`; `/health`, `/models`, and CORS boundary were reconfirmed. A 1.3 MB live image request at the prior 640-pixel profile timed out before a response, while health remained available. The smaller 320-pixel profile and single-thread native pools were locally verified and require redeploy. The legacy Vercel site remains an older standalone deployment; a new Vercel Git-project request returned an integration-side 404 after creation and needs connection in Vercel settings. | Pending |
 
 ## Known non-blocking release notes
 

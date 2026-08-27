@@ -44,7 +44,7 @@ For local preview, the frontend uses the same-origin `/inference-api` proxy. For
 
 The backend accepts `CORS_ALLOWED_ORIGINS`, `YOLO26S_MODEL_PATH`, `YOLO26S_MODEL_SHA256`, `YOLO26N_MODEL_PATH`, `YOLO26M_MODEL_PATH`, `YOLO26L_MODEL_PATH`, `YOLO26X_MODEL_PATH`, `INFERENCE_IMAGE_SIZE`, `INFERENCE_CONFIDENCE_THRESHOLD`, `INFERENCE_IOU_THRESHOLD`, `MAX_UPLOAD_MB`, `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT`, `MAX_IMAGE_PIXELS`, `INFERENCE_CONCURRENCY`, `RATE_LIMIT_REQUESTS`, and `RATE_LIMIT_WINDOW_SECONDS`. The frontend accepts `VITE_INFERENCE_API_URL`.
 
-The default confidence threshold is 0.25 and the default IoU threshold is 0.45. Local development defaults to a 960-pixel input size; the Render free-tier blueprint uses 640 pixels to keep CPU inference within a more conservative resource envelope. These values affect inference behavior, not training accuracy. Render runs CPU inference; it is not configured as a GPU service.
+The default confidence threshold is 0.25 and the default IoU threshold is 0.45. Local development defaults to a 960-pixel input size; the Render free-tier blueprint uses 320 pixels with single-thread native pools to keep CPU inference within a conservative resource envelope. These values affect inference behavior, not training accuracy. Render runs CPU inference; it is not configured as a GPU service.
 
 ## Deployment
 

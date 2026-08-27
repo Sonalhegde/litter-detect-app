@@ -54,11 +54,11 @@ For a local browser, set `VITE_INFERENCE_API_URL=http://127.0.0.1:8000` in the f
 | `CORS_ALLOWED_ORIGINS` | local origins plus the production Vercel origin | Comma-separated browser-origin allowlist. |
 | `YOLO26S_MODEL_PATH` | `models/yolo26s.pt` | Trusted deployment path for the supplied checkpoint. |
 | `YOLO26S_MODEL_SHA256` | supplied model fingerprint | Integrity pin for the trusted checkpoint. |
-| `INFERENCE_IMAGE_SIZE` | `960` locally, `640` on Render | Input-side inference resolution; lower production resolution reduces free-instance memory pressure. |
+| `INFERENCE_IMAGE_SIZE` | `960` locally, `320` on Render | Input-side inference resolution; lower production resolution reduces free-instance memory pressure. |
 | `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25` | Confidence floor for detections. |
 | `INFERENCE_IOU_THRESHOLD` | `0.45` | IoU setting supplied to the detector. |
-| `MAX_UPLOAD_MB` | `10` | Maximum accepted image file size. |
-| `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT` | `6000` each | Safe decoded-image dimension caps. |
-| `MAX_IMAGE_PIXELS` | `20000000` | Safe decoded-image pixel cap. |
+| `MAX_UPLOAD_MB` | `10` locally, `4` on Render | Maximum accepted image file size. |
+| `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT` | `6000` locally, `3000` on Render | Safe decoded-image dimension caps. |
+| `MAX_IMAGE_PIXELS` | `20000000` locally, `6000000` on Render | Safe decoded-image pixel cap. |
 | `INFERENCE_CONCURRENCY` | `1` | Maximum simultaneous model execution per instance. |
 | `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` | `6`, `60` | Per-instance public-demo request budget. |
