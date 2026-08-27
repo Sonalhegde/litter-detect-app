@@ -41,9 +41,14 @@ export class DetectionApiError extends Error {
   }
 }
 
-// Local preview requests use Vite's same-origin proxy. Production deployments must
-// provide VITE_INFERENCE_API_URL with the public Render service URL.
-export const API_BASE_URL = (import.meta.env.VITE_INFERENCE_API_URL || "/inference-api").replace(/\/$/, "");
+// Local preview requests use Vite's same-origin proxy. The environment variable
+// supports alternate deployed backends; this app's known Render service is a
+// production fallback so a missing dashboard setting cannot strand the frontend.
+const defaultApiUrl = import.meta.env.DEV
+  ? "/inference-api"
+  : "https://litter-detect-inference.onrender.com";
+
+export const API_BASE_URL = (import.meta.env.VITE_INFERENCE_API_URL || defaultApiUrl).replace(/\/$/, "");
 
 export function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
