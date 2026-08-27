@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 from .settings import Settings
 
-ModelId = Literal["yolo26s", "yolo26n"]
+ModelId = Literal["yolo26n", "yolo26s", "yolo26m", "yolo26l", "yolo26x"]
 
 
 @dataclass(frozen=True)
@@ -25,17 +25,35 @@ class ModelRegistry:
 
     def __init__(self, settings: Settings) -> None:
         self.specs: dict[ModelId, ModelSpec] = {
-            "yolo26s": ModelSpec(
-                id="yolo26s",
-                label="YOLO26s",
-                path=settings.yolo26s_model_path,
-                description="Bundled trained litter detector",
-            ),
             "yolo26n": ModelSpec(
                 id="yolo26n",
                 label="YOLO26n",
                 path=settings.yolo26n_model_path,
-                description="Optional nano litter detector",
+                description="Lightweight edge baseline; checkpoint not yet installed",
+            ),
+            "yolo26s": ModelSpec(
+                id="yolo26s",
+                label="YOLO26s",
+                path=settings.yolo26s_model_path,
+                description="Primary trained marine-litter checkpoint",
+            ),
+            "yolo26m": ModelSpec(
+                id="yolo26m",
+                label="YOLO26m",
+                path=settings.yolo26m_model_path,
+                description="Medium higher-capacity experiment; checkpoint not yet installed",
+            ),
+            "yolo26l": ModelSpec(
+                id="yolo26l",
+                label="YOLO26l",
+                path=settings.yolo26l_model_path,
+                description="Large high-accuracy experiment; checkpoint not yet installed",
+            ),
+            "yolo26x": ModelSpec(
+                id="yolo26x",
+                label="YOLO26x",
+                path=settings.yolo26x_model_path,
+                description="Maximum-capacity experiment; checkpoint not yet installed",
             ),
         }
         self._models: dict[ModelId, Any] = {}
@@ -44,7 +62,7 @@ class ModelRegistry:
 
     def get_spec(self, model_id: str) -> ModelSpec:
         if model_id not in self.specs:
-            raise HTTPException(status_code=422, detail={"code": "invalid_model", "message": "Select YOLO26s or YOLO26n."})
+            raise HTTPException(status_code=422, detail={"code": "invalid_model", "message": "Select one of YOLO26n, YOLO26s, YOLO26m, YOLO26l, or YOLO26x."})
         return self.specs[model_id]  # type: ignore[index]
 
     def status(self) -> list[dict[str, str | bool]]:

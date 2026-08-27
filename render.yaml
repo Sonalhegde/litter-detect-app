@@ -14,6 +14,12 @@ services:
         value: /app/models/yolo26s.pt
       - key: YOLO26N_MODEL_PATH
         value: /app/models/yolo26n.pt
+      - key: YOLO26M_MODEL_PATH
+        value: /app/models/yolo26m.pt
+      - key: YOLO26L_MODEL_PATH
+        value: /app/models/yolo26l.pt
+      - key: YOLO26X_MODEL_PATH
+        value: /app/models/yolo26x.pt
       - key: INFERENCE_IMAGE_SIZE
         value: "1280"
       - key: INFERENCE_CONFIDENCE_THRESHOLD

@@ -1,4 +1,4 @@
-export type ModelId = "yolo26s" | "yolo26n";
+export type ModelId = "yolo26n" | "yolo26s" | "yolo26m" | "yolo26l" | "yolo26x";
 
 export type Detection = {
   id: number;

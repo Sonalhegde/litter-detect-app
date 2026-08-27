@@ -54,6 +54,9 @@ class Settings:
     allowed_origins: list[str]
     yolo26s_model_path: Path
     yolo26n_model_path: Path
+    yolo26m_model_path: Path
+    yolo26l_model_path: Path
+    yolo26x_model_path: Path
     image_size: int
     confidence_threshold: float
     iou_threshold: float
@@ -69,6 +72,9 @@ def load_settings() -> Settings:
         allowed_origins=parse_origins(os.getenv("CORS_ALLOWED_ORIGINS")),
         yolo26s_model_path=Path(os.getenv("YOLO26S_MODEL_PATH", MODEL_DIR / "yolo26s.pt")),
         yolo26n_model_path=Path(os.getenv("YOLO26N_MODEL_PATH", MODEL_DIR / "yolo26n.pt")),
+        yolo26m_model_path=Path(os.getenv("YOLO26M_MODEL_PATH", MODEL_DIR / "yolo26m.pt")),
+        yolo26l_model_path=Path(os.getenv("YOLO26L_MODEL_PATH", MODEL_DIR / "yolo26l.pt")),
+        yolo26x_model_path=Path(os.getenv("YOLO26X_MODEL_PATH", MODEL_DIR / "yolo26x.pt")),
         image_size=get_int_env("INFERENCE_IMAGE_SIZE", 1280, 320, 2048),
         confidence_threshold=get_float_env("INFERENCE_CONFIDENCE_THRESHOLD", 0.25, 0.01, 0.99),
         iou_threshold=get_float_env("INFERENCE_IOU_THRESHOLD", 0.45, 0.01, 0.99),

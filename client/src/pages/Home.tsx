@@ -31,8 +31,11 @@ import {
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const modelCards: Array<{ id: ModelId; name: string; meta: string; description: string }> = [
-  { id: "yolo26s", name: "YOLO26s", meta: "Precision profile", description: "Bundled trained litter checkpoint" },
-  { id: "yolo26n", name: "YOLO26n", meta: "Speed profile", description: "Optional nano checkpoint" },
+  { id: "yolo26n", name: "YOLO26n", meta: "Edge baseline", description: "Lightweight variant · checkpoint not installed" },
+  { id: "yolo26s", name: "YOLO26s", meta: "Primary model", description: "Supplied marine-litter checkpoint" },
+  { id: "yolo26m", name: "YOLO26m", meta: "Higher capacity", description: "Medium variant · checkpoint not installed" },
+  { id: "yolo26l", name: "YOLO26l", meta: "High accuracy", description: "Large variant · checkpoint not installed" },
+  { id: "yolo26x", name: "YOLO26x", meta: "Maximum capacity", description: "Maximum variant · checkpoint not installed" },
 ];
 
 function ApiStatus({ health }: { health: HealthResponse | null }) {
@@ -173,13 +176,13 @@ export default function Home() {
       <div className="ambient ambient--two" aria-hidden="true" />
 
       <header className="topbar">
-        <a className="brand" href="#workspace" aria-label="Tideline Intelligence workspace">
+        <a className="brand" href="#workspace" aria-label="BlueSentinel AI workspace">
           <span className="brand-mark"><Waves size={20} /></span>
-          <span>tideline<span className="brand-accent">.intel</span></span>
+          <span>BlueSentinel <span className="brand-accent">AI</span></span>
         </a>
         <div className="topbar-right">
           <ApiStatus health={health} />
-          <a className="docs-link" href="#how-it-works">How it works <ArrowUpRight size={14} /></a>
+          <a className="docs-link" href="#how-it-works">Research notes <ArrowUpRight size={14} /></a>
         </div>
       </header>
 
@@ -188,7 +191,7 @@ export default function Home() {
           <div className="hero-copy">
             <div className="eyebrow"><Radar size={14} /> Visual intelligence for cleaner coastlines</div>
             <h1 id="page-title">See what the shoreline<br /><span>leaves behind.</span></h1>
-            <p>Upload a coastal image and use a purpose-trained YOLO detector to identify litter, quantify confidence, and review every marked instance.</p>
+            <p>Upload a coastal image and use the supplied YOLO26s marine-litter detector to identify the trained <strong>litter</strong> class, quantify confidence, and review every marked instance.</p>
           </div>
           <div className="hero-note" aria-label="Detection workflow">
             <span className="hero-note-label">Workflow</span>
@@ -259,7 +262,7 @@ export default function Home() {
             {error && (
               <div className="error-state" role="alert">
                 <AlertCircle size={18} />
-                <div><strong>Analysis could not start</strong><p>{error}</p>{model === "yolo26n" && <p className="error-help">To enable YOLO26n, add its checkpoint at <code>inference-backend/models/yolo26n.pt</code> or set <code>YOLO26N_MODEL_PATH</code>.</p>}</div>
+                <div><strong>Analysis could not start</strong><p>{error}</p>{modelHealth && !modelHealth.available && <p className="error-help">To enable {selectedModel.name}, add its checkpoint at <code>inference-backend/models/{model}.pt</code> or set the matching model-path environment variable.</p>}</div>
                 <button type="button" onClick={() => void runDetection()} disabled={!file || status === "scanning"} aria-label="Retry detection"><RefreshCw size={16} /></button>
               </div>
             )}
@@ -315,9 +318,19 @@ export default function Home() {
           <div className="method-points"><span><b>01</b> Secure image upload</span><span><b>02</b> Server-side YOLO inference</span><span><b>03</b> Box-level inspection</span></div>
           <span className="api-footnote">API: {API_BASE_URL}</span>
         </section>
+
+        <section className="docs-index" aria-labelledby="docs-title">
+          <div><span className="eyebrow">Documentation</span><h2 id="docs-title">Research notes for reproducible review.</h2></div>
+          <p>Architecture, dataset boundaries, model-family context, deployment notes, and limitations are maintained alongside the source.</p>
+          <nav className="docs-menu" aria-label="Documentation menu">
+            {[
+              ["Overview", "overview"], ["How It Works", "how-it-works"], ["YOLO26", "yolo26"], ["Model Family", "model-family"], ["Why YOLO26", "why-yolo26"], ["Dataset", "dataset"], ["Data Cleaning", "data-cleaning"], ["Training", "training"], ["Metrics", "metrics"], ["API", "api"], ["Deployment", "deployment"], ["Limitations", "limitations"], ["Future Work", "future-work"], ["Credits", "acknowledgements"],
+            ].map(([label, slug]) => <a key={slug} href={`https://github.com/Sonalhegde/litter-detect-app/tree/main/docs/${slug}.md`} target="_blank" rel="noreferrer">{label}</a>)}
+          </nav>
+        </section>
       </main>
 
-      <footer><span>tideline.intel · litter detection workstation</span><span>YOLO-powered visual analysis</span></footer>
+      <footer><span>BlueSentinel AI · marine debris detection platform</span><a href="https://github.com/Sonalhegde/litter-detect-app" target="_blank" rel="noreferrer">Source on GitHub</a></footer>
     </div>
   );
 }

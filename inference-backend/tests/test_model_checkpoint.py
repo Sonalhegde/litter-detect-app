@@ -12,3 +12,11 @@ class ModelCheckpointTests(unittest.TestCase):
         self.assertEqual(spec.id, "yolo26s")
         self.assertTrue(spec.path.is_file())
         self.assertIsNotNone(model)
+
+    def test_uninstalled_model_variants_are_reported_as_unavailable(self) -> None:
+        registry = ModelRegistry(load_settings())
+        status = {entry["id"]: entry for entry in registry.status()}
+
+        self.assertEqual(set(status), {"yolo26n", "yolo26s", "yolo26m", "yolo26l", "yolo26x"})
+        for model_id in ("yolo26n", "yolo26m", "yolo26l", "yolo26x"):
+            self.assertFalse(status[model_id]["available"])

@@ -1,101 +1,77 @@
-# Tideline Intelligence — Litter Detection
+# BlueSentinel AI — Marine Debris Detection Platform
 
-Tideline Intelligence is a deployment-oriented web application for reviewing coastal and shoreline images with purpose-trained YOLO litter detectors. It preserves the supplied prototype’s essential path: a browser uploads one image, the service runs model inference at `1280` pixels with a `0.25` confidence threshold and `0.45` IoU threshold, and the client displays each returned bounding box, label, confidence, coordinate, and aggregate summary.
+BlueSentinel AI is a university-level research prototype for detecting the trained `litter` class in coastal and marine images. It combines a React/Vite interface with a FastAPI inference service and preserves the supplied YOLO26s workflow: upload an image, select a model, run inference, inspect confidence and coordinates, and review the result visually.
 
-The frontend is a Vite/React single-page application configured for Vercel. The independent FastAPI service is configured for Render and keeps selected YOLO models resident after the first request. This separation prevents browser clients from handling model weights and gives each service a clear deployment boundary.
+## Current model status
 
-## Model integrity
+The supplied `best.pt` checkpoint was preserved byte-for-byte and registered as `inference-backend/models/yolo26s.pt` for the primary YOLO26s workflow. The interface exposes YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x, but each option is marked unavailable until its own checkpoint is installed. The application never substitutes a different model or fabricates detections.
 
-| Model selector | Expected asset | Status in supplied archive | API behavior |
-|---|---|---:|---|
-| `YOLO26s` | `inference-backend/models/yolo26s.pt` | Present; SHA-256 `d52d0d489e8e46bc55b8a46091c5dfc689bc1d21979b1450433af9cfe26036e5` | Available when its checkpoint loads. |
-| `YOLO26n` | `inference-backend/models/yolo26n.pt` | Not present | Visible in the selector; produces a clear setup error until a genuine Nano checkpoint is supplied. |
+| Variant | Intended role | Current project status |
+|---|---|---|
+| YOLO26n | Lightweight edge baseline | Checkpoint not installed |
+| YOLO26s | Speed/accuracy balance | Supplied marine-litter checkpoint |
+| YOLO26m | Higher-capacity experiment | Checkpoint not installed |
+| YOLO26l | Large high-accuracy experiment | Checkpoint not installed |
+| YOLO26x | Maximum-capacity experiment | Checkpoint not installed |
 
-The supplied `best.pt` checkpoint is preserved byte-for-byte as `yolo26s.pt` and is mapped to `YOLO26s` because its embedded metadata identifies `yolo26s`. The application does not use this model for Nano requests or manufacture an additional checkpoint. See [`inference-backend/models/MODELS.md`](inference-backend/models/MODELS.md) for the asset policy.
-
-## Repository layout
-
-| Path | Role |
-|---|---|
-| `client/` | Polished React upload, model-selector, processing-state, box-overlay, and detection-ledger interface. |
-| `inference-backend/` | Isolated FastAPI inference service, dual-model registry, input validation, narrow CORS policy, tests, and Dockerfile. |
-| `render.yaml` | Render Blueprint for the inference service. |
-| `vercel.json` | Vercel Vite build/output configuration and SPA rewrite. |
-| `.gitattributes` | Git LFS mapping for intentionally versioned source model checkpoints. |
+Official COCO benchmark values are not marine-litter results and are documented separately from this project’s validation metrics. See `docs/model-family.md` and `docs/metrics.md`.
 
 ## Local development
 
-Use separate terminals for the frontend and inference service. Copy each component’s `.env.example` to `.env` and adjust the values for your local environment. Do not commit a real `.env` file.
+### Backend
 
 ```bash
-# Terminal 1 — inference API
 cd inference-backend
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-# Terminal 2 — frontend
+The API exposes `/`, `/health`, and `POST /v1/detections`. FastAPI’s interactive documentation is available at `/docs`.
+
+### Frontend
+
+```bash
 pnpm install
 pnpm dev
 ```
 
-When this repository runs through Vite locally, the frontend uses the same-origin `/inference-api` proxy by default. This avoids directing a browser at the sandbox loopback address. To point the local frontend at a different server, set `VITE_INFERENCE_API_URL` to its public URL; include the frontend origin in `CORS_ALLOWED_ORIGINS`. Confirm availability at `GET /health`; submit an image to `POST /v1/detections` with multipart fields `file` and `model`.
+For local preview, the frontend uses the same-origin `/inference-api` proxy. For a separate deployment, set `VITE_INFERENCE_API_URL` to the public backend URL.
 
-## Vercel frontend deployment
+## Environment variables
 
-Vercel deploys the Vite frontend from the repository root using `pnpm run build:frontend`, with `dist/public` as the output folder. The committed `vercel.json` also includes the SPA rewrite required for deep-linking in a Vite single-page application. In Vercel’s project settings, create the following environment variable for **Production** and **Preview**:
+The backend accepts `CORS_ALLOWED_ORIGINS`, `YOLO26S_MODEL_PATH`, `YOLO26N_MODEL_PATH`, `YOLO26M_MODEL_PATH`, `YOLO26L_MODEL_PATH`, `YOLO26X_MODEL_PATH`, `INFERENCE_IMAGE_SIZE`, `INFERENCE_CONFIDENCE_THRESHOLD`, `INFERENCE_IOU_THRESHOLD`, and `MAX_UPLOAD_MB`. The frontend accepts `VITE_INFERENCE_API_URL`.
 
-| Variable | Value |
-|---|---|
-| `VITE_INFERENCE_API_URL` | The HTTPS URL of the deployed Render inference service, for example `https://litter-detect-inference.onrender.com`. |
+The default inference threshold is 0.25, the default IoU threshold is 0.45, and the packaged input size is 1280. These values affect inference behavior, not training accuracy. Render runs CPU inference; it is not configured as a GPU service.
 
-Because Vite only exposes environment variables prefixed with `VITE` to browser bundles, this public API URL is intentionally not a secret.[1]
+## Deployment
 
-## Render inference deployment
+The frontend is configured for Vercel through `vercel.json`. The inference service is configured for Render through `render.yaml` and `inference-backend/Dockerfile`. Render’s free service can spin down after inactivity, so `docs/keep-alive.md` documents a low-frequency health-check option and its trade-offs. No in-process timer is used.
 
-Create a new Render Blueprint from this GitHub repository or create a Docker Web Service with `inference-backend/Dockerfile` as Dockerfile path and `inference-backend` as the Docker build context. The committed `render.yaml` defines the same configuration and uses `/health` for service checks. Render supports Docker-based services from a repository Dockerfile and supports `dockerfilePath` and `dockerContext` for monorepos.[2] [3]
+The public repository is [Sonalhegde/litter-detect-app](https://github.com/Sonalhegde/litter-detect-app). The visible product name is BlueSentinel AI even though the existing repository slug is retained for deployment continuity.
 
-Before the first production deploy, set `CORS_ALLOWED_ORIGINS` in Render to the exact Vercel origin, such as `https://your-project.vercel.app`. Use a comma-separated list only when intentionally supporting multiple browser origins. After you create the Vercel project, add its final production URL to Render and redeploy the inference service.
+## Research transparency
 
-| Render variable | Required value |
-|---|---|
-| `CORS_ALLOWED_ORIGINS` | Exact Vercel production origin, with no wildcard. |
-| `YOLO26S_MODEL_PATH` | `/app/models/yolo26s.pt` unless storing the verified checkpoint elsewhere. |
-| `YOLO26N_MODEL_PATH` | `/app/models/yolo26n.pt` after a genuine Nano checkpoint is provided. |
-| `INFERENCE_IMAGE_SIZE` | `1280`, retained from the supplied prototype. |
-| `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25`, retained from the supplied prototype. |
-| `INFERENCE_IOU_THRESHOLD` | `0.45`, retained from the supplied prototype. |
-| `MAX_UPLOAD_MB` | `10`; the frontend and API enforce the same limit. |
+The project documents the supplied dataset split and reported validation figures without relabeling them as test results. The locked 852-image test set has not been evaluated in this application and must remain separate. The trained model is single-class: a zero-result means that no object matching the trained `litter` class exceeded the configured threshold; it does not prove that an image contains no objects or no marine debris.
 
-The model registry loads weights only when that model is first selected, rather than on every request. This keeps the original reuse-oriented inference workflow while allowing the health endpoint to accurately distinguish unavailable model assets.
+See `docs/overview.md`, `docs/how-it-works.md`, `docs/yolo26.md`, `docs/model-family.md`, `docs/dataset.md`, `docs/data-cleaning.md`, `docs/training.md`, `docs/metrics.md`, `docs/api.md`, `docs/deployment.md`, `docs/limitations.md`, `docs/future-work.md`, and `docs/acknowledgements.md`.
 
-## Git LFS and model assets
-
-The intended source checkpoints are marked for Git LFS in `.gitattributes`; other model exports and generated artifacts remain ignored. Install Git LFS before first commit and use `git lfs install`. GitHub blocks regular Git pushes for files larger than 100 MiB, while Git LFS is designed to store large binary objects separately from normal repository history.[4] [5]
-
-If deployment from Git requires LFS checkout support, enable it in the provider’s project settings or use an approved model artifact delivery method. Vercel exposes a Git LFS setting on connected projects.[6] Never put secrets, API keys, virtual environments, prediction outputs, or generated model exports into Git.
-
-## Verification
+## Tests
 
 ```bash
-# Frontend helpers and UI-adjacent formatting tests
 pnpm test
-
-# TypeScript integrity and Vite production build
 pnpm check
-pnpm run build:frontend
-
-# Python configuration tests
+pnpm build
 cd inference-backend
-PYTHONPATH=. python3 -m unittest discover -s tests -v
+PYTHONPATH=. python -m unittest discover -s tests -v
 ```
 
-## References
+## Credits and references
 
-[1]: https://vercel.com/docs/frameworks/frontend/vite "Vite on Vercel"
-[2]: https://render.com/docs/docker "Docker on Render"
-[3]: https://render.com/docs/blueprint-spec "Render Blueprint YAML Reference"
-[4]: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github "About large files on GitHub"
-[5]: https://docs.github.com/repositories/working-with-files/managing-large-files/about-git-large-file-storage "About Git Large File Storage"
-[6]: https://vercel.com/docs/project-configuration/git-settings "Vercel Git settings"
+BlueSentinel AI uses Ultralytics, PyTorch, FastAPI, React, Vite, Pillow, and the supplied marine-litter checkpoint. Official YOLO26 terminology is based on [Ultralytics YOLO26 documentation](https://docs.ultralytics.com/models/yolo26), the [YOLO26 training recipe](https://docs.ultralytics.com/guides/yolo26-training-recipe), and [Ultralytics training documentation](https://docs.ultralytics.com/modes/train). Dataset attribution remains to be completed from the original dataset source because the supplied prototype did not include authoritative dataset creator details.
+
+## Known limitations and future work
+
+This is a single-class detector with possible false positives, false negatives, domain shift, small-object difficulty, and CPU latency. It does not include a marine-scene relevance classifier, video tracking, segmentation, or locked-test evaluation. Future work includes dataset auditing, multi-class taxonomy, video and drone input, temporal tracking, segmentation, ONNX/TensorRT export, quantization, and edge-device benchmarking.

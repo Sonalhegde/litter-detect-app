@@ -18,3 +18,11 @@
 - [ ] Recover the failed Vercel Git link with a direct production deployment and connect it to the public Render inference URL.
 - [ ] Present keep-alive scheduling alternatives and, after user confirmation, configure the selected recurring health check for the deployed Render inference service.
 - [ ] Fix the Render container’s missing OpenCV runtime libraries and verify the public health endpoint after redeployment.
+
+- [ ] Rebrand the visible application as BlueSentinel AI — Marine Debris Detection Platform.
+- [ ] Add YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x selector options with honest unavailable states for missing checkpoints.
+- [ ] Add transparent research documentation for YOLO26, the dataset, training/validation metrics, API, deployment, limitations, future work, and acknowledgements.
+- [ ] Add a safe keep-alive configuration/runbook without using an in-process timer or inference requests.
+- [ ] Re-run backend/frontend tests and production health checks after the requirements changes.
+- [ ] Create a new BlueSentinel-AI GitHub repository or rename the existing repository only after confirming the desired migration path.
+- [ ] Update Vercel and Render deployments after the requirements changes.
