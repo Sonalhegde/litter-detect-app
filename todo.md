@@ -32,6 +32,7 @@
 - [ ] Verify the Vercel deployment is serving the newest GitHub commit using a commit-visible release marker.
 - [ ] Expose and verify a live `GET /models` endpoint, or remove the unsupported endpoint claim from the deployment validation checklist.
 - [ ] Fix and verify live Render YOLO26s inference after the multipart request returned HTTP 502, preserving the truthful five-variant availability states.
+- [ ] Replace the CUDA-capable PyTorch dependency resolution in the CPU-only Render container with verified CPU-only PyTorch and torchvision wheels, then re-test YOLO26s inference locally and in production.
 - [x] Complete an evidence-based code, dependency, deployment, API, and ML-security audit using the supplied requirements document; document unsupported or untestable requests explicitly.
 - [x] Refactor the FastAPI backend into maintainable configuration, API-route, schema, service, and security-logging modules without changing the trusted supplied YOLO26s checkpoint.
 - [x] Harden image upload and inference controls with content verification, decoded-image dimension/pixel limits, safe structured errors, concurrency limits, and public-demo rate limiting.

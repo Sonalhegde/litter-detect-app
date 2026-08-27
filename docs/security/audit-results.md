@@ -10,7 +10,7 @@
 | Model and API controls | Five static model IDs, unavailable-model `503`, typed responses, request IDs, CORS allowlist, per-instance rate limiting, and serialized inference are covered by tests. | Pass |
 | Python tests | `pytest -q` completed with **19 passed**. One upstream FastAPI/Starlette deprecation warning was reported by the test client; it did not affect API results. | Pass with upstream warning |
 | Python static analysis | `bandit -q -r app -f txt` completed with no findings after narrowing optional device metadata handling. | Pass |
-| Python dependencies | `pip-audit -r backend/requirements.txt` returned **No known vulnerabilities found** after updating FastAPI, Pillow, and python-multipart pins. | Pass |
+| Python dependencies | `pip-audit -r backend/requirements.txt` returned **No known vulnerabilities found** after updating FastAPI, Pillow, and python-multipart pins. The requirements now pin official CPU-only PyTorch 2.12.1 and torchvision 0.27.1 wheels; an isolated Python 3.12 environment loaded the supplied YOLO26s checkpoint and completed the verified marine-debris image request at 320 input pixels in 1.437 seconds. | Pass |
 | Frontend tests and build | Type check passed; Vitest completed with **5 passed**; complete production build completed. | Pass |
 | JavaScript production dependencies | `pnpm audit --prod --json` reported zero advisory records and zero vulnerabilities after pruning unreachable Streamdown/Recharts template features and updating direct runtime dependencies. | Pass |
 | Local CORS | Allowed Vercel origin preflight returned `200` and `access-control-allow-origin`; untrusted origin returned `400` without that origin header. | Pass |

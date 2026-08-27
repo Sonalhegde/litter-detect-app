@@ -49,6 +49,8 @@ For a local browser, set `VITE_INFERENCE_API_URL=http://127.0.0.1:8000` in the f
 
 ## Environment configuration
 
+The deployment requirements pin the official CPU-only `torch==2.12.1+cpu` and `torchvision==0.27.1+cpu` wheels from PyTorch's CPU index. This is intentional: Render Free provides CPU inference, so CUDA-capable wheel payloads provide no benefit and materially increase the deployed image surface.
+
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `CORS_ALLOWED_ORIGINS` | local origins plus the production Vercel origin | Comma-separated browser-origin allowlist. |
