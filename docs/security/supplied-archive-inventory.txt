@@ -1,0 +1,21 @@
+Archive:  /home/ubuntu/upload/litter-detect-app.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  2026-08-27 12:51   litter-detect-app/
+        0  2026-08-27 12:49   litter-detect-app/frontend/
+      169  2026-08-27 12:49   litter-detect-app/frontend/vite.config.js
+        0  2026-08-27 12:50   litter-detect-app/frontend/src/
+     1062  2026-08-27 12:49   litter-detect-app/frontend/src/index.css
+     7540  2026-08-27 12:49   litter-detect-app/frontend/src/App.jsx
+     5425  2026-08-27 12:50   litter-detect-app/frontend/src/App.css
+      239  2026-08-27 12:49   litter-detect-app/frontend/src/main.jsx
+      598  2026-08-27 12:49   litter-detect-app/frontend/index.html
+      359  2026-08-27 12:49   litter-detect-app/frontend/package.json
+        0  2026-08-27 12:51   litter-detect-app/backend/
+        0  2026-08-27 12:48   litter-detect-app/backend/model/
+ 80474565  2026-08-27 12:48   litter-detect-app/backend/model/best.pt
+     5046  2026-08-27 12:48   litter-detect-app/backend/main.py
+      101  2026-08-27 12:48   litter-detect-app/backend/requirements.txt
+     3139  2026-08-27 12:51   litter-detect-app/README.md
+---------                     -------
+ 80498243                     16 files

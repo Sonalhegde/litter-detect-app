@@ -29,7 +29,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 function registerDevelopmentInferenceProxy(app: express.Express) {
-  app.all("/inference-api/*", (req, res) => {
+  app.all("/inference-api/*path", (req, res) => {
     const targetPath = req.originalUrl.replace(/^\/inference-api/, "") || "/";
     const upstream = httpRequest(
       {

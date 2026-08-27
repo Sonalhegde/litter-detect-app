@@ -122,10 +122,10 @@ venv/
 htmlcov/
 
 # YOLO training/runtime products — keep only intentionally versioned source weights.
-inference-backend/models/*
-!inference-backend/models/MODELS.md
-!inference-backend/models/yolo26s.pt
-!inference-backend/models/yolo26n.pt
+backend/models/*
+!backend/models/MODELS.md
+!backend/models/yolo26s.pt
+!backend/models/yolo26n.pt
 *.onnx
 *.engine
 *.tflite
@@ -133,4 +133,5 @@ inference-backend/models/*
 *.torchscript
 runs/
 wandb/
-inference-backend/outputs/
+backend/outputs/
+backend/tests/assets/generated/

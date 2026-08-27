@@ -15,6 +15,7 @@ export type DetectionResponse = {
   inferenceTimeSec: number;
   imageSize: { width: number; height: number };
   summary: Array<{ className: string; count: number }>;
+  runtime: { confidenceThreshold: number; iouThreshold: number; inputSize: number; device: "cpu" | "cuda" | "mps" | "unknown" };
 };
 
 export type ModelHealth = {
@@ -41,13 +42,9 @@ export class DetectionApiError extends Error {
   }
 }
 
-// Local preview requests use Vite's same-origin proxy. The environment variable
-// supports alternate deployed backends; this app's known Render service is a
-// production fallback so a missing dashboard setting cannot strand the frontend.
-const defaultApiUrl = import.meta.env.DEV
-  ? "/inference-api"
-  : "https://litter-detect-inference.onrender.com";
-
+// Local preview requests use Vite's same-origin proxy. The production variable
+// supports a replacement deployment; the known Render URL is a deliberate fallback.
+const defaultApiUrl = import.meta.env.DEV ? "/inference-api" : "https://litter-detect-inference.onrender.com";
 export const API_BASE_URL = (import.meta.env.VITE_INFERENCE_API_URL || defaultApiUrl).replace(/\/$/, "");
 
 export function formatPercent(value: number) {
@@ -59,6 +56,10 @@ export function averageConfidence(detections: Detection[]) {
   return detections.reduce((total, detection) => total + detection.confidence, 0) / detections.length;
 }
 
+export function maxConfidence(detections: Detection[]) {
+  return detections.reduce((maximum, detection) => Math.max(maximum, detection.confidence), 0);
+}
+
 export function formatDuration(seconds: number) {
   return `${seconds.toFixed(seconds < 10 ? 2 : 1)}s`;
 }
@@ -67,7 +68,7 @@ function toCamelResponse(raw: Record<string, unknown>): DetectionResponse {
   const rawDetections = Array.isArray(raw.detections) ? raw.detections : [];
   const detections = rawDetections.map((item, index) => {
     const detection = item as Record<string, unknown>;
-    const rawBox = detection.bbox as Record<string, number>;
+    const rawBox = (detection.bbox || {}) as Record<string, number>;
     return {
       id: Number(detection.id ?? index + 1),
       className: String(detection.class_name ?? detection.class ?? "litter"),
@@ -82,6 +83,8 @@ function toCamelResponse(raw: Record<string, unknown>): DetectionResponse {
   });
   const image = raw.image_size as Record<string, number> | undefined;
   const rawSummary = Array.isArray(raw.summary) ? raw.summary : [];
+  const rawRuntime = (raw.runtime || {}) as Record<string, unknown>;
+  const device = String(rawRuntime.device);
 
   return {
     model: raw.model as ModelId,
@@ -94,22 +97,46 @@ function toCamelResponse(raw: Record<string, unknown>): DetectionResponse {
       const entry = item as Record<string, unknown>;
       return { className: String(entry.class_name ?? "litter"), count: Number(entry.count ?? 0) };
     }),
+    runtime: {
+      confidenceThreshold: Number(rawRuntime.confidence_threshold ?? 0.25),
+      iouThreshold: Number(rawRuntime.iou_threshold ?? 0.45),
+      inputSize: Number(rawRuntime.input_size ?? 0),
+      device: ["cpu", "cuda", "mps", "unknown"].includes(device) ? device as "cpu" | "cuda" | "mps" | "unknown" : "unknown",
+    },
   };
 }
 
 async function parseError(response: Response) {
   const fallback = `The detection service returned ${response.status}.`;
   try {
-    const body = (await response.json()) as { detail?: string | { message?: string; code?: string } };
+    const body = (await response.json()) as { detail?: string | { message?: string; code?: string }; error?: { message?: string; code?: string } };
     if (typeof body.detail === "string") return new DetectionApiError(body.detail, { status: response.status });
-    return new DetectionApiError(body.detail?.message || fallback, { code: body.detail?.code, status: response.status });
+    return new DetectionApiError(body.error?.message || body.detail?.message || fallback, { code: body.error?.code || body.detail?.code, status: response.status });
   } catch {
     return new DetectionApiError(fallback, { status: response.status });
   }
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit, externalSignal: AbortSignal | undefined, timeoutMs: number) {
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  externalSignal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted && !externalSignal?.aborted) {
+      throw new DetectionApiError("The detection service took too long to respond. Please try again.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+    externalSignal?.removeEventListener("abort", abortFromCaller);
+  }
+}
+
 export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/health`, { signal });
+  const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {}, signal, 20_000);
   if (!response.ok) throw await parseError(response);
   return (await response.json()) as HealthResponse;
 }
@@ -121,9 +148,10 @@ export async function requestDetection(file: File, model: ModelId, signal?: Abor
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}/v1/detections`, { method: "POST", body, signal });
+    response = await fetchWithTimeout(`${API_BASE_URL}/v1/detections`, { method: "POST", body }, signal, 150_000);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
+    if (error instanceof DetectionApiError) throw error;
     throw new DetectionApiError("The detection service could not be reached. Check its URL and service status.");
   }
 

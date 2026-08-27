@@ -21,14 +21,17 @@ import {
   formatDuration,
   formatPercent,
   getHealth,
+  maxConfidence,
   requestDetection,
   type DetectionApiError,
   type DetectionResponse,
   type HealthResponse,
   type ModelId,
 } from "@/lib/detection";
+import { DocumentationCenter, type DocumentationTopicId } from "@/components/DocumentationCenter";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const SUPPORTED_BROWSER_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const modelCards: Array<{ id: ModelId; name: string; meta: string; description: string }> = [
   { id: "yolo26n", name: "YOLO26n", meta: "Edge baseline", description: "Lightweight variant · checkpoint not installed" },
@@ -92,12 +95,14 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [activeDocumentation, setActiveDocumentation] = useState<DocumentationTopicId>("overview");
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const selectedModel = useMemo(() => modelCards.find((entry) => entry.id === model)!, [model]);
   const modelHealth = health?.models.find((entry) => entry.id === model);
   const detectedConfidence = useMemo(() => averageConfidence(result?.detections || []), [result]);
+  const maximumConfidence = useMemo(() => maxConfidence(result?.detections || []), [result]);
 
   const refreshHealth = useCallback(async () => {
     try {
@@ -121,8 +126,8 @@ export default function Home() {
 
   const selectFile = useCallback((candidate?: File) => {
     if (!candidate) return;
-    if (!candidate.type.startsWith("image/")) {
-      setError("Choose a JPEG, PNG, WebP, or another supported image file.");
+    if (candidate.type && !SUPPORTED_BROWSER_MIME_TYPES.has(candidate.type)) {
+      setError("Choose a JPEG, PNG, or WebP image. The API verifies the actual file content before inference.");
       setStatus("error");
       return;
     }
@@ -150,6 +155,11 @@ export default function Home() {
 
   const runDetection = useCallback(async () => {
     if (!file) return;
+    if (modelHealth && !modelHealth.available) {
+      setError(`${selectedModel.name} is not installed on the inference service. Select the supplied YOLO26s checkpoint instead.`);
+      setStatus("error");
+      return;
+    }
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -168,7 +178,7 @@ export default function Home() {
       setStatus("error");
       void refreshHealth();
     }
-  }, [file, model, refreshHealth]);
+  }, [file, model, modelHealth, refreshHealth, selectedModel.name]);
 
   return (
     <div className="app-shell">
@@ -182,7 +192,7 @@ export default function Home() {
         </a>
         <div className="topbar-right">
           <ApiStatus health={health} />
-          <a className="docs-link" href="#how-it-works">Research notes <ArrowUpRight size={14} /></a>
+          <a className="docs-link" href="#documentation">Research notes <ArrowUpRight size={14} /></a>
         </div>
       </header>
 
@@ -240,6 +250,7 @@ export default function Home() {
                       type="button"
                       role="radio"
                       aria-checked={model === entry.id}
+                      disabled={Boolean(availability && !availability.available)}
                       onClick={() => { setModel(entry.id); setError(null); if (status === "error") setStatus("idle"); }}
                       className={`model-card ${model === entry.id ? "model-card--selected" : ""}`}
                     >
@@ -253,7 +264,7 @@ export default function Home() {
             </div>
 
             <div className="actions">
-              <button type="button" className="primary-action" disabled={!file || status === "scanning"} onClick={() => void runDetection()}>
+              <button type="button" className="primary-action" disabled={!file || status === "scanning" || Boolean(modelHealth && !modelHealth.available)} onClick={() => void runDetection()}>
                 {status === "scanning" ? <><LoaderCircle className="spin" size={17} /> Analyzing image</> : <><Sparkles size={17} /> Analyze with {selectedModel.name}</>}
               </button>
               {file && <button type="button" className="clear-action" onClick={clearWorkspace}>Clear</button>}
@@ -262,7 +273,7 @@ export default function Home() {
             {error && (
               <div className="error-state" role="alert">
                 <AlertCircle size={18} />
-                <div><strong>Analysis could not start</strong><p>{error}</p>{modelHealth && !modelHealth.available && <p className="error-help">To enable {selectedModel.name}, add its checkpoint at <code>inference-backend/models/{model}.pt</code> or set the matching model-path environment variable.</p>}</div>
+                <div><strong>Analysis could not start</strong><p>{error}</p>{modelHealth && !modelHealth.available && <p className="error-help">This selection needs a genuine compatible checkpoint to be added through the controlled deployment process.</p>}</div>
                 <button type="button" onClick={() => void runDetection()} disabled={!file || status === "scanning"} aria-label="Retry detection"><RefreshCw size={16} /></button>
               </div>
             )}
@@ -286,15 +297,18 @@ export default function Home() {
                   <DetectionOverlay result={result} />
                   <div className="image-key"><span /><span>Detected litter</span></div>
                 </div>
-                <div className="result-meta"><span><Cpu size={13} /> {result.modelLabel}</span><span><ShieldCheck size={13} /> Coordinates retained</span></div>
+                <div className="result-meta"><span><Cpu size={13} /> {result.modelLabel}</span><span><ShieldCheck size={13} /> {result.runtime.device.toUpperCase()} inference</span><span>Input {result.runtime.inputSize}px</span></div>
                 <div className="metrics-grid">
                   <Metric label="Items detected" value={String(result.count).padStart(2, "0")} accent />
                   <Metric label="Mean confidence" value={formatPercent(detectedConfidence)} />
+                  <Metric label="Maximum confidence" value={formatPercent(maximumConfidence)} />
                   <Metric label="Inference time" value={formatDuration(result.inferenceTimeSec)} />
+                  <Metric label="Confidence threshold" value={formatPercent(result.runtime.confidenceThreshold)} />
+                  <Metric label="IoU threshold" value={formatPercent(result.runtime.iouThreshold)} />
                 </div>
                 <div className="findings-header"><div><span className="panel-overline">Instances</span><h3>Detection ledger</h3></div><span>{result.count} total</span></div>
                 {result.detections.length === 0 ? (
-                  <div className="no-detections"><CheckCircle2 size={19} /><div><strong>No litter detected</strong><p>No instances met the configured confidence threshold for this image.</p></div></div>
+                  <div className="no-detections"><CheckCircle2 size={19} /><div><strong>No marine debris detected.</strong><p>No object matching the trained litter class exceeded the configured confidence threshold. This does not mean the image contains no objects or no debris.</p></div></div>
                 ) : (
                   <ol className="detection-list">
                     {[...result.detections].sort((a, b) => b.confidence - a.confidence).map((detection, index) => (
@@ -319,18 +333,10 @@ export default function Home() {
           <span className="api-footnote">API: {API_BASE_URL}</span>
         </section>
 
-        <section className="docs-index" aria-labelledby="docs-title">
-          <div><span className="eyebrow">Documentation</span><h2 id="docs-title">Research notes for reproducible review.</h2></div>
-          <p>Architecture, dataset boundaries, model-family context, deployment notes, and limitations are maintained alongside the source.</p>
-          <nav className="docs-menu" aria-label="Documentation menu">
-            {[
-              ["Overview", "overview"], ["How It Works", "how-it-works"], ["YOLO26", "yolo26"], ["Model Family", "model-family"], ["Why YOLO26", "why-yolo26"], ["Dataset", "dataset"], ["Data Cleaning", "data-cleaning"], ["Training", "training"], ["Metrics", "metrics"], ["API", "api"], ["Deployment", "deployment"], ["Limitations", "limitations"], ["Future Work", "future-work"], ["Credits", "acknowledgements"],
-            ].map(([label, slug]) => <a key={slug} href={`https://github.com/Sonalhegde/litter-detect-app/tree/main/docs/${slug}.md`} target="_blank" rel="noreferrer">{label}</a>)}
-          </nav>
-        </section>
+        <DocumentationCenter activeTopic={activeDocumentation} onTopicChange={setActiveDocumentation} />
       </main>
 
-      <footer><span>BlueSentinel AI · marine debris detection platform</span><a href="https://github.com/Sonalhegde/litter-detect-app" target="_blank" rel="noreferrer">Source on GitHub</a></footer>
+      <footer><span>BlueSentinel AI · marine debris detection platform</span><a href="#documentation">In-application documentation</a></footer>
     </div>
   );
 }

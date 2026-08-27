@@ -4,24 +4,24 @@ BlueSentinel AI is a university-level research prototype for detecting the train
 
 ## Current model status
 
-The supplied `best.pt` checkpoint was preserved byte-for-byte and registered as `inference-backend/models/yolo26s.pt` for the primary YOLO26s workflow. The interface exposes YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x, but each option is marked unavailable until its own checkpoint is installed. The application never substitutes a different model or fabricates detections.
+The supplied `best.pt` checkpoint is preserved byte-for-byte and registered as `backend/models/yolo26s.pt` for the primary YOLO26s workflow. The interface exposes YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x, but each option is marked unavailable until its own checkpoint is installed. The application never substitutes a different model or fabricates detections.
 
 | Variant | Intended role | Current project status |
 |---|---|---|
 | YOLO26n | Lightweight edge baseline | Checkpoint not installed |
-| YOLO26s | Speed/accuracy balance | Supplied marine-litter checkpoint |
+| YOLO26s | Speed/accuracy balance | Supplied, checksum-pinned marine-litter checkpoint |
 | YOLO26m | Higher-capacity experiment | Checkpoint not installed |
 | YOLO26l | Large high-accuracy experiment | Checkpoint not installed |
 | YOLO26x | Maximum-capacity experiment | Checkpoint not installed |
 
-Official COCO benchmark values are not marine-litter results and are documented separately from this project’s validation metrics. See `docs/model-family.md` and `docs/metrics.md`.
+Official COCO benchmark values are not marine-litter results and remain separate from this project's reported validation record.
 
 ## Local development
 
 ### Backend
 
 ```bash
-cd inference-backend
+cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -29,7 +29,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API exposes `/`, `/health`, and `POST /v1/detections`. FastAPI’s interactive documentation is available at `/docs`.
+The API exposes `/`, `/health`, `/models`, and `POST /v1/detections`; `/detect` is retained as a compatibility alias. FastAPI's interactive documentation is available at `/docs`.
 
 ### Frontend
 
@@ -42,21 +42,19 @@ For local preview, the frontend uses the same-origin `/inference-api` proxy. For
 
 ## Environment variables
 
-The backend accepts `CORS_ALLOWED_ORIGINS`, `YOLO26S_MODEL_PATH`, `YOLO26N_MODEL_PATH`, `YOLO26M_MODEL_PATH`, `YOLO26L_MODEL_PATH`, `YOLO26X_MODEL_PATH`, `INFERENCE_IMAGE_SIZE`, `INFERENCE_CONFIDENCE_THRESHOLD`, `INFERENCE_IOU_THRESHOLD`, and `MAX_UPLOAD_MB`. The frontend accepts `VITE_INFERENCE_API_URL`.
+The backend accepts `CORS_ALLOWED_ORIGINS`, `YOLO26S_MODEL_PATH`, `YOLO26S_MODEL_SHA256`, `YOLO26N_MODEL_PATH`, `YOLO26M_MODEL_PATH`, `YOLO26L_MODEL_PATH`, `YOLO26X_MODEL_PATH`, `INFERENCE_IMAGE_SIZE`, `INFERENCE_CONFIDENCE_THRESHOLD`, `INFERENCE_IOU_THRESHOLD`, `MAX_UPLOAD_MB`, `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT`, `MAX_IMAGE_PIXELS`, `INFERENCE_CONCURRENCY`, `RATE_LIMIT_REQUESTS`, and `RATE_LIMIT_WINDOW_SECONDS`. The frontend accepts `VITE_INFERENCE_API_URL`.
 
-The default inference threshold is 0.25, the default IoU threshold is 0.45, and the packaged input size is 1280. These values affect inference behavior, not training accuracy. Render runs CPU inference; it is not configured as a GPU service.
+The default confidence threshold is 0.25 and the default IoU threshold is 0.45. Local development defaults to a 960-pixel input size; the Render free-tier blueprint uses 640 pixels to keep CPU inference within a more conservative resource envelope. These values affect inference behavior, not training accuracy. Render runs CPU inference; it is not configured as a GPU service.
 
 ## Deployment
 
-The frontend is configured for Vercel through `vercel.json`. The inference service is configured for Render through `render.yaml` and `inference-backend/Dockerfile`. Render’s free service can spin down after inactivity, so `docs/keep-alive.md` documents a low-frequency health-check option and its trade-offs. No in-process timer is used.
-
-The public repository is [Sonalhegde/litter-detect-app](https://github.com/Sonalhegde/litter-detect-app). The visible product name is BlueSentinel AI even though the existing repository slug is retained for deployment continuity.
+The frontend is configured for Vercel through `vercel.json`. The inference service is configured for Render through `render.yaml` and `backend/Dockerfile`. Render's free service can spin down after inactivity, so `docs/keep-alive.md` documents a low-frequency health-check option and its trade-offs. No in-process timer is used.
 
 ## Research transparency
 
 The project documents the supplied dataset split and reported validation figures without relabeling them as test results. The locked 852-image test set has not been evaluated in this application and must remain separate. The trained model is single-class: a zero-result means that no object matching the trained `litter` class exceeded the configured threshold; it does not prove that an image contains no objects or no marine debris.
 
-See `docs/overview.md`, `docs/how-it-works.md`, `docs/yolo26.md`, `docs/model-family.md`, `docs/dataset.md`, `docs/data-cleaning.md`, `docs/training.md`, `docs/metrics.md`, `docs/api.md`, `docs/deployment.md`, `docs/limitations.md`, `docs/future-work.md`, and `docs/acknowledgements.md`.
+The product's **Research notes** link opens the same project documentation inside the application, including the architecture diagram, model-family status, security and reliability controls, API contract, validation boundaries, limitations, and future work. The source documentation is retained under `docs/` for technical review.
 
 ## Tests
 
@@ -64,8 +62,8 @@ See `docs/overview.md`, `docs/how-it-works.md`, `docs/yolo26.md`, `docs/model-fa
 pnpm test
 pnpm check
 pnpm build
-cd inference-backend
-PYTHONPATH=. python -m unittest discover -s tests -v
+cd backend
+pytest -q
 ```
 
 ## Credits and references

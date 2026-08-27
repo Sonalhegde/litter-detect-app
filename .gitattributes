@@ -1,2 +1,5 @@
 # YOLO26s is intentionally stored as a normal Git binary so Render receives it during source checkout.
-inference-backend/models/yolo26n.pt filter=lfs diff=lfs merge=lfs -text
+backend/models/yolo26n.pt filter=lfs diff=lfs merge=lfs -text
+backend/models/yolo26m.pt filter=lfs diff=lfs merge=lfs -text
+backend/models/yolo26l.pt filter=lfs diff=lfs merge=lfs -text
+backend/models/yolo26x.pt filter=lfs diff=lfs merge=lfs -text

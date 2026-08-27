@@ -3,8 +3,8 @@ services:
     runtime: docker
     name: litter-detect-inference
     plan: free
-    dockerfilePath: ./inference-backend/Dockerfile
-    dockerContext: ./inference-backend
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
@@ -12,6 +12,8 @@ services:
         sync: false
       - key: YOLO26S_MODEL_PATH
         value: /app/models/yolo26s.pt
+      - key: YOLO26S_MODEL_SHA256
+        value: d52d0d489e8e46bc55b8a46091c5dfc689bc1d21979b1450433af9cfe26036e5
       - key: YOLO26N_MODEL_PATH
         value: /app/models/yolo26n.pt
       - key: YOLO26M_MODEL_PATH
@@ -21,10 +23,22 @@ services:
       - key: YOLO26X_MODEL_PATH
         value: /app/models/yolo26x.pt
       - key: INFERENCE_IMAGE_SIZE
-        value: "1280"
+        value: "640"
       - key: INFERENCE_CONFIDENCE_THRESHOLD
         value: "0.25"
       - key: INFERENCE_IOU_THRESHOLD
         value: "0.45"
       - key: MAX_UPLOAD_MB
         value: "10"
+      - key: MAX_IMAGE_WIDTH
+        value: "6000"
+      - key: MAX_IMAGE_HEIGHT
+        value: "6000"
+      - key: MAX_IMAGE_PIXELS
+        value: "20000000"
+      - key: INFERENCE_CONCURRENCY
+        value: "1"
+      - key: RATE_LIMIT_REQUESTS
+        value: "6"
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "60"

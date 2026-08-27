@@ -8,21 +8,45 @@
 - [x] Write and run unit tests, type checks, production build validation, and supplied-checkpoint compatibility validation.
 - [x] Verify malformed image files return a client-safe validation error rather than an unhandled service error.
 - [ ] Obtain and register the missing genuine YOLO26n litter-detection checkpoint so the Nano selection can execute inference.
-- [ ] Create a private GitHub repository and push the completed project.
-- [ ] Provide Vercel and Render deployment handoff instructions.
+- [x] Create a private GitHub repository and push the completed project.
+- [x] Provide Vercel and Render deployment handoff instructions.
 - [x] Resolve the frontend-to-inference API connectivity failure shown after image upload and verify a successful browser analysis flow.
 - [x] Rename the supplied `best.pt` checkpoint to an explicit YOLO26s backend asset name and update every backend, deployment, and documentation reference.
-- [ ] Diagnose and recover from the Vercel connector authorization callback failure (`invalid_request`) before creating the Git-linked frontend deployment.
-- [ ] Remove the environment-specific analytics loader from the standalone Vercel frontend build.
-- [ ] Configure the Render Blueprint for a free web service so deployment does not require payment-card entry.
-- [ ] Recover the failed Vercel Git link with a direct production deployment and connect it to the public Render inference URL.
-- [ ] Present keep-alive scheduling alternatives and, after user confirmation, configure the selected recurring health check for the deployed Render inference service.
-- [ ] Fix the Render container’s missing OpenCV runtime libraries and verify the public health endpoint after redeployment.
+- [x] Diagnose and recover from the Vercel connector authorization callback failure (`invalid_request`) before creating the Git-linked frontend deployment.
+- [x] Remove the environment-specific analytics loader from the standalone Vercel frontend build.
+- [x] Configure the Render Blueprint for a free web service so deployment does not require payment-card entry.
+- [x] Recover the failed Vercel Git link with a direct production deployment and connect it to the public Render inference URL.
+- [x] Present keep-alive scheduling alternatives and configure the GitHub Actions 10-minute health-check alternative for the deployed Render inference service.
+- [x] Fix the Render container’s missing OpenCV runtime libraries and verify the public health endpoint after redeployment.
 
-- [ ] Rebrand the visible application as BlueSentinel AI — Marine Debris Detection Platform.
-- [ ] Add YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x selector options with honest unavailable states for missing checkpoints.
-- [ ] Add transparent research documentation for YOLO26, the dataset, training/validation metrics, API, deployment, limitations, future work, and acknowledgements.
-- [ ] Add a safe keep-alive configuration/runbook without using an in-process timer or inference requests.
-- [ ] Re-run backend/frontend tests and production health checks after the requirements changes.
-- [ ] Create a new BlueSentinel-AI GitHub repository or rename the existing repository only after confirming the desired migration path.
-- [ ] Update Vercel and Render deployments after the requirements changes.
+- [x] Rebrand the visible application as BlueSentinel AI — Marine Debris Detection Platform.
+- [x] Add YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x selector options with honest unavailable states for missing checkpoints.
+- [x] Add transparent research documentation for YOLO26, the dataset, training/validation metrics, API, deployment, limitations, future work, and acknowledgements.
+- [x] Add a safe keep-alive configuration/runbook without using an in-process timer or inference requests.
+- [x] Re-run backend/frontend tests and production health checks after the requirements changes.
+- [x] Keep the existing private `litter-detect-app` GitHub repository rather than migrating it without an explicit rename request.
+- [x] Update Vercel and Render deployments after the requirements changes.
+- [x] Re-run and record post-change production checks against the live Vercel frontend and Render `/health` endpoint after the BlueSentinel/model-family updates.
+- [x] Verify Vercel has deployed the latest GitHub commit and the live UI shows BlueSentinel branding plus YOLO26n/s/m/l/x availability states.
+- [x] Verify Render has redeployed the latest backend commit and its live health/models response matches the expanded registry and keep-alive docs.
+- [ ] Verify the Vercel deployment is serving the newest GitHub commit using a commit-visible release marker.
+- [ ] Expose and verify a live `GET /models` endpoint, or remove the unsupported endpoint claim from the deployment validation checklist.
+- [ ] Fix and verify live Render YOLO26s inference after the multipart request returned HTTP 502, preserving the truthful five-variant availability states.
+- [x] Complete an evidence-based code, dependency, deployment, API, and ML-security audit using the supplied requirements document; document unsupported or untestable requests explicitly.
+- [x] Refactor the FastAPI backend into maintainable configuration, API-route, schema, service, and security-logging modules without changing the trusted supplied YOLO26s checkpoint.
+- [x] Harden image upload and inference controls with content verification, decoded-image dimension/pixel limits, safe structured errors, concurrency limits, and public-demo rate limiting.
+- [x] Add backend regression tests for the documented API contract, malformed uploads, deceptive MIME/filename inputs, CORS, rate limits, and model-unavailable behavior.
+- [x] Add in-application documentation pages and navigation, including a defensive Security & Reliability view and an interactive architecture diagram; replace links that send users to GitHub for reading documentation.
+- [x] Remove the requested NUCAT and Melas Quiz/Incridea project-background achievements from all project-facing documentation and UI.
+- [x] Test controlled synthetic controls, a distinct non-marine real image, and a legally reusable real marine-litter image; report only directly observed inference behavior and keep test-set metrics pending when the locked labeled set is absent. No standalone user-provided shoreline bytes were available; that user-image smoke test remains pending until supplied.
+- [ ] Re-run frontend, backend, dependency, security, integration, and live deployment verification; push the verified revision to GitHub and confirm Vercel/Render deployment status.
+- [x] Make the backend test command self-contained so `pytest` discovers the local `app` package without manually setting `PYTHONPATH`.
+- [x] Fix backend test-module imports and remove the undeclared async-test dependency so the full `pytest` suite runs with the documented requirements.
+- [x] Ensure rate limiting does not trust a spoofable client-provided forwarded-IP header, and make filename-security regression tests independent of rate-limit exhaustion.
+- [x] Replace the stale local FastAPI process on the frontend proxy port with the restructured backend before recording local integration results.
+- [x] Upgrade the backend’s audited vulnerable FastAPI/Starlette, Pillow, and python-multipart dependency chain to compatible patched pins; rerun API, image, and audit checks afterward.
+- [x] Remove the unreachable template chat feature and its audited Streamdown/Mermaid dependency graph, then re-audit the production JavaScript dependency set.
+- [x] Update or remove the remaining audited direct JavaScript dependency chains for tRPC, AWS SDK, Axios, Express, NanoID, Drizzle, and unused charting code; document any residual template-runtime advisories.
+- [x] Fix the Express 5-compatible storage-proxy wildcard route so the managed development preview starts after the audited Express upgrade.
+- [x] Address the backend static-analysis warning by narrowing the device-metadata exception handling without masking unexpected inference errors.
+- [x] Extend the Git LFS policy to all future YOLO26n/m/l/x checkpoints while keeping the supplied YOLO26s checkpoint a normal Render-compatible Git binary.
