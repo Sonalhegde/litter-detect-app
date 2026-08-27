@@ -50,3 +50,5 @@
 - [x] Fix the Express 5-compatible storage-proxy wildcard route so the managed development preview starts after the audited Express upgrade.
 - [x] Address the backend static-analysis warning by narrowing the device-metadata exception handling without masking unexpected inference errors.
 - [x] Extend the Git LFS policy to all future YOLO26n/m/l/x checkpoints while keeping the supplied YOLO26s checkpoint a normal Render-compatible Git binary.
+- [x] Align the future checkpoint ignore exceptions with the YOLO26n/m/l/x Git LFS rules so supported weights can be intentionally staged when supplied.
+- [x] Replace the stale pre-hardening Render smoke-test note with the current local validation evidence and a clear pending-production verification boundary.

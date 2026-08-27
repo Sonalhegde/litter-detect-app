@@ -126,6 +126,9 @@ backend/models/*
 !backend/models/MODELS.md
 !backend/models/yolo26s.pt
 !backend/models/yolo26n.pt
+!backend/models/yolo26m.pt
+!backend/models/yolo26l.pt
+!backend/models/yolo26x.pt
 *.onnx
 *.engine
 *.tflite
