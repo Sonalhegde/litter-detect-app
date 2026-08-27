@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import HTTPException
-from ultralytics import YOLO
 
 from .settings import Settings
 
@@ -74,6 +73,11 @@ class ModelRegistry:
         with self._lock:
             if model_id not in self._models:
                 try:
+                    # Importing Ultralytics imports OpenCV and PyTorch. Defer that
+                    # heavyweight runtime until a real analysis request so /health
+                    # can start promptly on low-resource container platforms.
+                    from ultralytics import YOLO
+
                     self._models[model_id] = YOLO(str(spec.path))
                 except Exception as exc:
                     self._load_errors[model_id] = str(exc)
