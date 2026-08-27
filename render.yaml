@@ -11,9 +11,9 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: YOLO26S_MODEL_PATH
-        value: /app/models/yolo26s.pt
+        value: /app/models/yolo26s.onnx
       - key: YOLO26S_MODEL_SHA256
-        value: d52d0d489e8e46bc55b8a46091c5dfc689bc1d21979b1450433af9cfe26036e5
+        value: 969bbf4733dd1486478e55cbb511569dc0bb7a75cf889597274b02b336b3ceb2
       - key: YOLO26N_MODEL_PATH
         value: /app/models/yolo26n.pt
       - key: YOLO26M_MODEL_PATH

@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT_DIR / "models"
-DEFAULT_TRUSTED_YOLO26S_SHA256 = "d52d0d489e8e46bc55b8a46091c5dfc689bc1d21979b1450433af9cfe26036e5"
+DEFAULT_TRUSTED_YOLO26S_SHA256 = "969bbf4733dd1486478e55cbb511569dc0bb7a75cf889597274b02b336b3ceb2"
 DEFAULT_ALLOWED_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -81,7 +81,7 @@ class Settings:
 def load_settings() -> Settings:
     return Settings(
         allowed_origins=parse_origins(os.getenv("CORS_ALLOWED_ORIGINS")),
-        yolo26s_model_path=Path(os.getenv("YOLO26S_MODEL_PATH", MODEL_DIR / "yolo26s.pt")),
+        yolo26s_model_path=Path(os.getenv("YOLO26S_MODEL_PATH", MODEL_DIR / "yolo26s.onnx")),
         yolo26n_model_path=Path(os.getenv("YOLO26N_MODEL_PATH", MODEL_DIR / "yolo26n.pt")),
         yolo26m_model_path=Path(os.getenv("YOLO26M_MODEL_PATH", MODEL_DIR / "yolo26m.pt")),
         yolo26l_model_path=Path(os.getenv("YOLO26L_MODEL_PATH", MODEL_DIR / "yolo26l.pt")),

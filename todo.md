@@ -30,7 +30,7 @@
 - [x] Verify Vercel has deployed the latest GitHub commit and the live UI shows BlueSentinel branding plus YOLO26n/s/m/l/x availability states.
 - [x] Verify Render has redeployed the latest backend commit and its live health/models response matches the expanded registry and keep-alive docs.
 - [ ] Verify the Vercel deployment is serving the newest GitHub commit using a commit-visible release marker.
-- [ ] Expose and verify a live `GET /models` endpoint, or remove the unsupported endpoint claim from the deployment validation checklist.
+- [x] Expose and verify a live `GET /models` endpoint, or remove the unsupported endpoint claim from the deployment validation checklist.
 - [ ] Fix and verify live Render YOLO26s inference after the multipart request returned HTTP 502, preserving the truthful five-variant availability states.
 - [ ] Replace the CUDA-capable PyTorch dependency resolution in the CPU-only Render container with verified CPU-only PyTorch and torchvision wheels, then re-test YOLO26s inference locally and in production.
 - [x] Align the frontend’s stated and client-side image upload limit with the 4 MB Render production cap so users receive accurate preflight guidance.
@@ -54,3 +54,5 @@
 - [x] Extend the Git LFS policy to all future YOLO26n/m/l/x checkpoints while keeping the supplied YOLO26s checkpoint a normal Render-compatible Git binary.
 - [x] Align the future checkpoint ignore exceptions with the YOLO26n/m/l/x Git LFS rules so supported weights can be intentionally staged when supplied.
 - [x] Replace the stale pre-hardening Render smoke-test note with the current local validation evidence and a clear pending-production verification boundary.
+- [x] Derive and validate an ONNX deployment artifact from the checksum-pinned supplied YOLO26s checkpoint so the Render Free CPU service can avoid loading the heavyweight PyTorch runtime at request time.
+- [ ] Push the checksum-pinned direct ONNX revision and verify one live Render inference request, retaining a truthful failure record if the free instance remains unable to serve it.

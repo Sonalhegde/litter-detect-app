@@ -28,7 +28,7 @@ class FakeInferenceService:
             count=0,
             inference_time_sec=0.01,
             image_size=ImageSize(width=image.width, height=image.height),
-            runtime=RuntimeConfiguration(confidence_threshold=0.25, iou_threshold=0.45, input_size=640, device="cpu"),
+            runtime=RuntimeConfiguration(confidence_threshold=0.25, iou_threshold=0.45, input_size=320, device="cpu", engine="onnxruntime"),
         )
 
 

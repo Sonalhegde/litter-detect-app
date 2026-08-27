@@ -34,6 +34,7 @@ class RuntimeConfiguration(BaseModel):
     iou_threshold: float
     input_size: int
     device: Literal["cpu", "cuda", "mps", "unknown"]
+    engine: Literal["onnxruntime", "pytorch"]
 
 
 class DetectionResponse(BaseModel):

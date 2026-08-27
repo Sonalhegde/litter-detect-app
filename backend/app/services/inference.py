@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ast
 import hashlib
 import threading
 import time
@@ -8,6 +9,10 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
+
+import cv2
+import numpy as np
+from PIL import Image
 
 from starlette.concurrency import run_in_threadpool
 
@@ -37,13 +42,13 @@ def normalize_model_id(model_id: str) -> ModelId:
 
 
 class ModelRegistry:
-    """Loads only configured, integrity-checked local checkpoints; user input selects an allowlisted ID."""
+    """Loads only configured, integrity-checked local model artifacts; user input selects an allowlisted ID."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.specs: dict[ModelId, ModelSpec] = {
             "yolo26n": ModelSpec("yolo26n", "YOLO26n", settings.yolo26n_model_path, "Lightweight edge baseline; checkpoint not yet installed"),
-            "yolo26s": ModelSpec("yolo26s", "YOLO26s", settings.yolo26s_model_path, "Primary trusted marine-litter checkpoint"),
+            "yolo26s": ModelSpec("yolo26s", "YOLO26s", settings.yolo26s_model_path, "Primary trusted marine-litter artifact"),
             "yolo26m": ModelSpec("yolo26m", "YOLO26m", settings.yolo26m_model_path, "Medium higher-capacity experiment; checkpoint not yet installed"),
             "yolo26l": ModelSpec("yolo26l", "YOLO26l", settings.yolo26l_model_path, "Large high-accuracy experiment; checkpoint not yet installed"),
             "yolo26x": ModelSpec("yolo26x", "YOLO26x", settings.yolo26x_model_path, "Maximum-capacity experiment; checkpoint not yet installed"),
@@ -82,7 +87,9 @@ class ModelRegistry:
             if not present:
                 detail = f"Checkpoint is not installed. Add {spec.path.name} through the deployment configuration."
             elif spec.id in self._load_errors:
-                detail = "Checkpoint could not be loaded. Verify the trusted deployment artifact."
+                detail = "Trusted deployment artifact could not be loaded."
+            elif spec.id == "yolo26s" and spec.path.suffix.lower() == ".onnx":
+                detail = "Trusted derived ONNX artifact from the supplied YOLO26s checkpoint; checksum verified."
             entries.append(ModelStatus(id=spec.id, label=spec.label, available=present and spec.id not in self._load_errors, detail=detail))
         return entries
 
@@ -95,13 +102,109 @@ class ModelRegistry:
         with self._lock:
             if model_id not in self._models:
                 try:
-                    from ultralytics import YOLO
+                    if spec.path.suffix.lower() != ".onnx":
+                        raise ValueError("The lightweight deployment runtime only accepts the verified ONNX artifact.")
+                    import onnxruntime as ort
 
-                    self._models[model_id] = YOLO(str(spec.path))
+                    session_options = ort.SessionOptions()
+                    session_options.intra_op_num_threads = 1
+                    session_options.inter_op_num_threads = 1
+                    session_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+                    self._models[model_id] = ort.InferenceSession(str(spec.path), sess_options=session_options, providers=["CPUExecutionProvider"])
                 except Exception as exc:
                     self._load_errors[model_id] = type(exc).__name__
                     raise ModelUnavailable("The selected trusted model could not be loaded.") from exc
         return spec, self._models[model_id]
+
+
+def _class_names_from_metadata(model: Any) -> dict[int, str]:
+    """Read Ultralytics ONNX metadata defensively and retain the confirmed fallback class label."""
+    try:
+        raw_names = model.get_modelmeta().custom_metadata_map.get("names", "")
+        parsed = ast.literal_eval(raw_names) if raw_names else {}
+        if isinstance(parsed, dict):
+            names = {int(key): str(value) for key, value in parsed.items() if isinstance(value, str)}
+            if names:
+                return names
+    except (AttributeError, SyntaxError, ValueError, TypeError):
+        pass
+    return {0: "litter"}
+
+
+def _prepare_image_tensor(image: Image.Image, image_size: int) -> np.ndarray:
+    """Apply the fixed square OpenCV letterbox transform used by the original predictor."""
+    source = np.asarray(image.convert("RGB"), dtype=np.uint8)
+    height, width = source.shape[:2]
+    gain = min(image_size / height, image_size / width)
+    resized_width, resized_height = round(width * gain), round(height * gain)
+    source_bgr = cv2.cvtColor(source, cv2.COLOR_RGB2BGR)
+    resized = cv2.resize(source_bgr, (resized_width, resized_height), interpolation=cv2.INTER_LINEAR)
+    left = round((image_size - resized_width) / 2 - 0.1)
+    top = round((image_size - resized_height) / 2 - 0.1)
+    canvas = np.full((image_size, image_size, 3), 114, dtype=np.uint8)
+    canvas[top : top + resized_height, left : left + resized_width] = resized
+    model_rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
+    return np.ascontiguousarray(model_rgb.transpose((2, 0, 1))[None], dtype=np.float32) / 255.0
+
+
+def _xywh_to_xyxy(boxes: np.ndarray) -> np.ndarray:
+    converted = np.empty_like(boxes)
+    converted[:, 0] = boxes[:, 0] - boxes[:, 2] / 2
+    converted[:, 1] = boxes[:, 1] - boxes[:, 3] / 2
+    converted[:, 2] = boxes[:, 0] + boxes[:, 2] / 2
+    converted[:, 3] = boxes[:, 1] + boxes[:, 3] / 2
+    return converted
+
+
+def _nms_indices(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float, max_detections: int = 300) -> np.ndarray:
+    """Perform deterministic class-aware NMS for the single-class YOLO26s model without importing PyTorch."""
+    order = np.argsort(-scores, kind="stable")
+    selected: list[int] = []
+    areas = np.maximum(0.0, boxes[:, 2] - boxes[:, 0]) * np.maximum(0.0, boxes[:, 3] - boxes[:, 1])
+    while order.size and len(selected) < max_detections:
+        current = int(order[0])
+        selected.append(current)
+        remaining = order[1:]
+        if not remaining.size:
+            break
+        left = np.maximum(boxes[current, 0], boxes[remaining, 0])
+        top = np.maximum(boxes[current, 1], boxes[remaining, 1])
+        right = np.minimum(boxes[current, 2], boxes[remaining, 2])
+        bottom = np.minimum(boxes[current, 3], boxes[remaining, 3])
+        intersection = np.maximum(0.0, right - left) * np.maximum(0.0, bottom - top)
+        union = areas[current] + areas[remaining] - intersection
+        iou = np.divide(intersection, union, out=np.zeros_like(intersection), where=union > 0)
+        order = remaining[iou <= iou_threshold]
+    return np.asarray(selected, dtype=np.int64)
+
+
+def _postprocess_yolo26_output(raw_output: np.ndarray, image_width: int, image_height: int, image_size: int, confidence_threshold: float, iou_threshold: float) -> list[tuple[int, float, np.ndarray]]:
+    """Convert the verified YOLO26s ONNX output tensor into original-image detections."""
+    if raw_output.ndim != 3 or raw_output.shape[0] != 1 or raw_output.shape[1] < 5:
+        raise ValueError("Unexpected trusted ONNX output shape.")
+    candidates = raw_output[0].transpose(1, 0)
+    class_scores = candidates[:, 4:]
+    class_ids = class_scores.argmax(axis=1)
+    confidence = class_scores[np.arange(class_scores.shape[0]), class_ids]
+    keep = confidence > confidence_threshold
+    if not np.any(keep):
+        return []
+    boxes = _xywh_to_xyxy(candidates[keep, :4])
+    confidence = confidence[keep]
+    class_ids = class_ids[keep]
+    selected = _nms_indices(boxes, confidence, iou_threshold)
+    gain = min(image_size / image_height, image_size / image_width)
+    pad_x = round((image_size - image_width * gain) / 2 - 0.1)
+    pad_y = round((image_size - image_height * gain) / 2 - 0.1)
+    detections: list[tuple[int, float, np.ndarray]] = []
+    for index in selected:
+        box = boxes[index].copy()
+        box[[0, 2]] = (box[[0, 2]] - pad_x) / gain
+        box[[1, 3]] = (box[[1, 3]] - pad_y) / gain
+        box[[0, 2]] = np.clip(box[[0, 2]], 0, image_width)
+        box[[1, 3]] = np.clip(box[[1, 3]], 0, image_height)
+        detections.append((int(class_ids[index]), float(confidence[index]), box))
+    return detections
 
 
 class InferenceService:
@@ -121,24 +224,18 @@ class InferenceService:
             self._semaphore.release()
 
     def _detect_sync(self, image: DecodedImage, model_id: ModelId) -> DetectionResponse:
-        model_spec, yolo_model = self.registry.get_model(model_id)
+        model_spec, onnx_session = self.registry.get_model(model_id)
         started_at = time.perf_counter()
-        results = yolo_model.predict(source=image.image, imgsz=self.settings.image_size, conf=self.settings.confidence_threshold, iou=self.settings.iou_threshold, verbose=False)
+        model_input = _prepare_image_tensor(image.image, self.settings.image_size)
+        input_name = onnx_session.get_inputs()[0].name
+        raw_output = onnx_session.run(None, {input_name: model_input})[0]
         elapsed = time.perf_counter() - started_at
-        result = results[0]
+        class_names = _class_names_from_metadata(onnx_session)
+        raw_detections = _postprocess_yolo26_output(raw_output, image.width, image.height, self.settings.image_size, self.settings.confidence_threshold, self.settings.iou_threshold)
         detections: list[Detection] = []
-        if result.boxes is not None:
-            for index, box in enumerate(result.boxes, start=1):
-                x1, y1, x2, y2 = box.xyxy[0].tolist()
-                class_id = int(box.cls[0])
-                detections.append(Detection(id=index, class_name=str(yolo_model.names[class_id]), confidence=round(float(box.conf[0]), 4), bbox=BoundingBox(x1=round(x1, 1), y1=round(y1, 1), x2=round(x2, 1), y2=round(y2, 1))))
+        for index, (class_id, confidence, box) in enumerate(raw_detections, start=1):
+            detections.append(Detection(id=index, class_name=class_names.get(class_id, f"class_{class_id}"), confidence=round(confidence, 4), bbox=BoundingBox(x1=round(float(box[0]), 1), y1=round(float(box[1]), 1), x2=round(float(box[2]), 1), y2=round(float(box[3]), 1))))
         counts = Counter(item.class_name for item in detections)
-        device = "unknown"
-        try:
-            device_text = str(next(yolo_model.model.parameters()).device)
-            device = "cuda" if device_text.startswith("cuda") else "mps" if device_text.startswith("mps") else "cpu"
-        except (AttributeError, StopIteration, TypeError):
-            pass
         return DetectionResponse(
             model=model_spec.id,
             model_label=model_spec.label,
@@ -147,5 +244,5 @@ class InferenceService:
             count=len(detections),
             inference_time_sec=round(elapsed, 3),
             image_size=ImageSize(width=image.width, height=image.height),
-            runtime=RuntimeConfiguration(confidence_threshold=self.settings.confidence_threshold, iou_threshold=self.settings.iou_threshold, input_size=self.settings.image_size, device=device),
+            runtime=RuntimeConfiguration(confidence_threshold=self.settings.confidence_threshold, iou_threshold=self.settings.iou_threshold, input_size=self.settings.image_size, device="cpu", engine="onnxruntime"),
         )

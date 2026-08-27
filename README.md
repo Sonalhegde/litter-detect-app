@@ -4,12 +4,12 @@ BlueSentinel AI is a university-level research prototype for detecting the train
 
 ## Current model status
 
-The supplied `best.pt` checkpoint is preserved byte-for-byte and registered as `backend/models/yolo26s.pt` for the primary YOLO26s workflow. The interface exposes YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x, but each option is marked unavailable until its own checkpoint is installed. The application never substitutes a different model or fabricates detections.
+The supplied `best.pt` checkpoint is preserved byte-for-byte as `backend/models/yolo26s.pt`. For constrained CPU deployment, the backend uses a separately checksum-pinned `backend/models/yolo26s.onnx` artifact derived from that supplied YOLO26s checkpoint; it does not replace or retrain the supplied file. The interface exposes YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x, but each option is marked unavailable until its own checkpoint is installed. The application never substitutes a different model or fabricates detections.
 
 | Variant | Intended role | Current project status |
 |---|---|---|
 | YOLO26n | Lightweight edge baseline | Checkpoint not installed |
-| YOLO26s | Speed/accuracy balance | Supplied, checksum-pinned marine-litter checkpoint |
+| YOLO26s | Speed/accuracy balance | Supplied checkpoint preserved; checksum-pinned ONNX deployment artifact available |
 | YOLO26m | Higher-capacity experiment | Checkpoint not installed |
 | YOLO26l | Large high-accuracy experiment | Checkpoint not installed |
 | YOLO26x | Maximum-capacity experiment | Checkpoint not installed |
@@ -44,7 +44,7 @@ For local preview, the frontend uses the same-origin `/inference-api` proxy. For
 
 The backend accepts `CORS_ALLOWED_ORIGINS`, `YOLO26S_MODEL_PATH`, `YOLO26S_MODEL_SHA256`, `YOLO26N_MODEL_PATH`, `YOLO26M_MODEL_PATH`, `YOLO26L_MODEL_PATH`, `YOLO26X_MODEL_PATH`, `INFERENCE_IMAGE_SIZE`, `INFERENCE_CONFIDENCE_THRESHOLD`, `INFERENCE_IOU_THRESHOLD`, `MAX_UPLOAD_MB`, `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT`, `MAX_IMAGE_PIXELS`, `INFERENCE_CONCURRENCY`, `RATE_LIMIT_REQUESTS`, and `RATE_LIMIT_WINDOW_SECONDS`. The frontend accepts `VITE_INFERENCE_API_URL`.
 
-The default confidence threshold is 0.25 and the default IoU threshold is 0.45. Local development defaults to a 960-pixel input size; the Render free-tier blueprint uses 320 pixels with single-thread native pools to keep CPU inference within a conservative resource envelope. These values affect inference behavior, not training accuracy. Render runs CPU inference; it is not configured as a GPU service.
+The default confidence threshold is 0.25 and the default IoU threshold is 0.45. Local development defaults to a 960-pixel input size; the Render free-tier blueprint uses a fixed 320-pixel ONNX artifact with single-thread native pools to keep CPU inference within a conservative resource envelope. These values affect inference behavior, not training accuracy. Render runs CPU inference; it is not configured as a GPU service.
 
 ## Deployment
 
@@ -68,8 +68,8 @@ pytest -q
 
 ## Credits and references
 
-BlueSentinel AI uses Ultralytics, PyTorch, FastAPI, React, Vite, Pillow, and the supplied marine-litter checkpoint. Official YOLO26 terminology is based on [Ultralytics YOLO26 documentation](https://docs.ultralytics.com/models/yolo26), the [YOLO26 training recipe](https://docs.ultralytics.com/guides/yolo26-training-recipe), and [Ultralytics training documentation](https://docs.ultralytics.com/modes/train). Dataset attribution remains to be completed from the original dataset source because the supplied prototype did not include authoritative dataset creator details.
+BlueSentinel AI uses FastAPI, ONNX Runtime, NumPy, headless OpenCV, React, Vite, Pillow, and the supplied marine-litter checkpoint. Ultralytics and CPU-only PyTorch were used only in the controlled local export/validation environment, not in the deployed request path. Official YOLO26 terminology is based on [Ultralytics YOLO26 documentation](https://docs.ultralytics.com/models/yolo26), the [YOLO26 training recipe](https://docs.ultralytics.com/guides/yolo26-training-recipe), and [Ultralytics training documentation](https://docs.ultralytics.com/modes/train). Dataset attribution remains to be completed from the original dataset source because the supplied prototype did not include authoritative dataset creator details.
 
 ## Known limitations and future work
 
-This is a single-class detector with possible false positives, false negatives, domain shift, small-object difficulty, and CPU latency. It does not include a marine-scene relevance classifier, video tracking, segmentation, or locked-test evaluation. Future work includes dataset auditing, multi-class taxonomy, video and drone input, temporal tracking, segmentation, ONNX/TensorRT export, quantization, and edge-device benchmarking.
+This is a single-class detector with possible false positives, false negatives, domain shift, small-object difficulty, and CPU latency. It does not include a marine-scene relevance classifier, video tracking, segmentation, or locked-test evaluation. Future work includes dataset auditing, multi-class taxonomy, video and drone input, temporal tracking, segmentation, quantization, and edge-device benchmarking.

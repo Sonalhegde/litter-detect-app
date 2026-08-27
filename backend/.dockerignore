@@ -4,5 +4,4 @@ __pycache__/
 .env
 venv/
 tests/
-models/*.onnx
 models/*.engine

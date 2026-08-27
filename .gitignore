@@ -130,6 +130,7 @@ backend/models/*
 !backend/models/yolo26l.pt
 !backend/models/yolo26x.pt
 *.onnx
+!backend/models/yolo26s.onnx
 *.engine
 *.tflite
 *.mlpackage
