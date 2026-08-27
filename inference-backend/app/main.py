@@ -26,7 +26,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="Litter Detection Inference API",
+    title="BlueSentinel AI Inference API",
     description="Upload a coastal image and receive YOLO litter detections with labels, confidence, and coordinates.",
     version="2.0.0",
     lifespan=lifespan,
@@ -47,8 +47,9 @@ def validation_error(message: str, code: str) -> HTTPException:
 
 
 def normalize_model_id(model: str) -> ModelId:
-    if model not in {"yolo26s", "yolo26n"}:
-        raise validation_error("Select a supported model: YOLO26s or YOLO26n.", "invalid_model")
+    supported_models = {"yolo26n", "yolo26s", "yolo26m", "yolo26l", "yolo26x"}
+    if model not in supported_models:
+        raise validation_error("Select one of: YOLO26n, YOLO26s, YOLO26m, YOLO26l, or YOLO26x.", "invalid_model")
     return model  # type: ignore[return-value]
 
 
@@ -83,10 +84,16 @@ def health() -> dict[str, object]:
     return {"status": status, "models": models}
 
 
+@app.get("/models", tags=["service"])
+def models() -> dict[str, object]:
+    """Return model availability without loading missing checkpoints."""
+    return {"models": registry.status()}
+
+
 @app.post("/v1/detections", tags=["detection"])
 async def detect_litter(
     file: Annotated[UploadFile, File(description="JPEG, PNG, or WebP image up to 10 MB")],
-    model: Annotated[str, Form(description="One of: yolo26s, yolo26n")] = "yolo26s",
+    model: Annotated[str, Form(description="One of: yolo26n, yolo26s, yolo26m, yolo26l, yolo26x")] = "yolo26s",
 ) -> dict[str, object]:
     """Run the chosen model and return box-level data for client-side image annotation."""
     model_id = normalize_model_id(model)
