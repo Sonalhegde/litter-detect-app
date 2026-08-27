@@ -2,15 +2,19 @@
 
 Render Free web services can spin down after 15 minutes without inbound traffic and may take about a minute to wake. The application therefore exposes a lightweight `GET /health` endpoint and does not use `setInterval`, `node-cron`, or a background process inside the web container. In-process timers are not reliable on autoscaled infrastructure.
 
-## Recommended low-cost option
+## Alternative without a cron-job.org account
 
-Create one external HTTPS monitor against:
+This repository includes `.github/workflows/render-keepalive.yml`. GitHub Actions runs a scheduled `GET` request against:
 
 ```text
 https://litter-detect-inference.onrender.com/health
 ```
 
-Use `GET`, no request body, no credentials, and an interval of 10 minutes. cron-job.org supports HTTPS requests and minute-level scheduling, but the service can delay or disable repeatedly failing jobs. A 10-minute interval reduces normal idle spin-down risk but cannot guarantee 24/7 availability, prevent provider restarts, or eliminate all cold starts.
+The workflow runs every 10 minutes and can also be started manually from the GitHub Actions tab. It sends no body, credentials, or image data. GitHub Actions schedules are best-effort rather than a strict uptime guarantee: queued workflows can be delayed, and scheduled workflows may be disabled by repository inactivity or platform policy. The workflow reduces ordinary idle spin-down risk; it cannot prevent provider restarts, service suspension, or every cold start.
+
+## cron-job.org option
+
+An external HTTPS monitor can use the same endpoint with `GET`, no body, no credentials, and a 10-minute interval. cron-job.org supports HTTPS requests and minute-level scheduling, but it requires a separate account and its own schedule configuration.
 
 ## Stronger option
 
