@@ -30,7 +30,7 @@ import {
 } from "@/lib/detection";
 import { DocumentationCenter, type DocumentationTopicId } from "@/components/DocumentationCenter";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const SUPPORTED_BROWSER_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const modelCards: Array<{ id: ModelId; name: string; meta: string; description: string }> = [
@@ -132,7 +132,7 @@ export default function Home() {
       return;
     }
     if (candidate.size > MAX_FILE_SIZE) {
-      setError("This image is larger than 10 MB. Compress it and try again.");
+      setError("This image is larger than 4 MB. Compress it and try again.");
       setStatus("error");
       return;
     }
@@ -229,7 +229,7 @@ export default function Home() {
                 <span className="dropzone-icon"><Upload size={22} /></span>
                 <strong>Drop an image to begin</strong>
                 <span>or choose a file from your device</span>
-                <small>JPG, PNG, WebP · maximum 10 MB</small>
+                <small>JPG, PNG, WebP · maximum 4 MB</small>
               </button>
             ) : (
               <div className="source-preview-wrap">
