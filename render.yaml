@@ -10,7 +10,7 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: YOLO26S_MODEL_PATH
-        value: /app/models/best.pt
+        value: /app/models/yolo26s.pt
       - key: YOLO26N_MODEL_PATH
         value: /app/models/yolo26n.pt
       - key: INFERENCE_IMAGE_SIZE

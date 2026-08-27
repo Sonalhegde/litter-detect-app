@@ -1,6 +1,6 @@
 # Model assets
 
-The supplied checkpoint is retained at `best.pt`. Passive inspection of its checkpoint metadata identifies the architecture as **YOLO26s** and the model class as `litter`. The API therefore exposes this artifact as `yolo26s` without renaming or re-exporting it.
+The supplied `best.pt` checkpoint is retained byte-for-byte as `yolo26s.pt`. Passive inspection of its checkpoint metadata identifies the architecture as **YOLO26s** and the model class as `litter`. The API therefore exposes this artifact as `yolo26s` without re-exporting or altering its contents.
 
 The supplied archive did **not** include a separate YOLO26n checkpoint. The service retains a dedicated `yolo26n` model slot, mapped by default to `yolo26n.pt`, but reports it as unavailable until a compatible checkpoint is placed at that path or `YOLO26N_MODEL_PATH` is configured. This avoids silently running the YOLO26s model when a user selects YOLO26n.
 

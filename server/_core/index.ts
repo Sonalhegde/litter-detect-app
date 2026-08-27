@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { createServer } from "http";
+import { createServer, request as httpRequest } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
@@ -28,6 +28,35 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+function registerDevelopmentInferenceProxy(app: express.Express) {
+  app.all("/inference-api/*", (req, res) => {
+    const targetPath = req.originalUrl.replace(/^\/inference-api/, "") || "/";
+    const upstream = httpRequest(
+      {
+        hostname: "127.0.0.1",
+        port: 8000,
+        path: targetPath,
+        method: req.method,
+        headers: { ...req.headers, host: "127.0.0.1:8000" },
+      },
+      upstreamResponse => {
+        res.status(upstreamResponse.statusCode || 502);
+        for (const [name, value] of Object.entries(upstreamResponse.headers)) {
+          if (value !== undefined) res.setHeader(name, value);
+        }
+        upstreamResponse.pipe(res);
+      }
+    );
+
+    upstream.on("error", () => {
+      if (!res.headersSent) {
+        res.status(503).json({ detail: { code: "inference_unreachable", message: "The local inference service is unavailable. Start the FastAPI service on port 8000 and retry." } });
+      }
+    });
+    req.pipe(upstream);
+  });
+}
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
@@ -46,6 +75,7 @@ async function startServer() {
   );
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
+    registerDevelopmentInferenceProxy(app);
     await setupVite(app, server);
   } else {
     serveStatic(app);

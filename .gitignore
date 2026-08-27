@@ -124,7 +124,7 @@ htmlcov/
 # YOLO training/runtime products — keep only intentionally versioned source weights.
 inference-backend/models/*
 !inference-backend/models/MODELS.md
-!inference-backend/models/best.pt
+!inference-backend/models/yolo26s.pt
 !inference-backend/models/yolo26n.pt
 *.onnx
 *.engine

@@ -1,2 +1,2 @@
-inference-backend/models/best.pt filter=lfs diff=lfs merge=lfs -text
+inference-backend/models/yolo26s.pt filter=lfs diff=lfs merge=lfs -text
 inference-backend/models/yolo26n.pt filter=lfs diff=lfs merge=lfs -text

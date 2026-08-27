@@ -10,3 +10,5 @@
 - [ ] Obtain and register the missing genuine YOLO26n litter-detection checkpoint so the Nano selection can execute inference.
 - [ ] Create a private GitHub repository and push the completed project.
 - [ ] Provide Vercel and Render deployment handoff instructions.
+- [x] Resolve the frontend-to-inference API connectivity failure shown after image upload and verify a successful browser analysis flow.
+- [x] Rename the supplied `best.pt` checkpoint to an explicit YOLO26s backend asset name and update every backend, deployment, and documentation reference.

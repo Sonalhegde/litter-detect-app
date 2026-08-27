@@ -41,7 +41,9 @@ export class DetectionApiError extends Error {
   }
 }
 
-export const API_BASE_URL = (import.meta.env.VITE_INFERENCE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+// Local preview requests use Vite's same-origin proxy. Production deployments must
+// provide VITE_INFERENCE_API_URL with the public Render service URL.
+export const API_BASE_URL = (import.meta.env.VITE_INFERENCE_API_URL || "/inference-api").replace(/\/$/, "");
 
 export function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;

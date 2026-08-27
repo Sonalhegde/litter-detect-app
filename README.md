@@ -8,10 +8,10 @@ The frontend is a Vite/React single-page application configured for Vercel. The 
 
 | Model selector | Expected asset | Status in supplied archive | API behavior |
 |---|---|---:|---|
-| `YOLO26s` | `inference-backend/models/best.pt` | Present; SHA-256 `d52d0d489e8e46bc55b8a46091c5dfc689bc1d21979b1450433af9cfe26036e5` | Available when its checkpoint loads. |
+| `YOLO26s` | `inference-backend/models/yolo26s.pt` | Present; SHA-256 `d52d0d489e8e46bc55b8a46091c5dfc689bc1d21979b1450433af9cfe26036e5` | Available when its checkpoint loads. |
 | `YOLO26n` | `inference-backend/models/yolo26n.pt` | Not present | Visible in the selector; produces a clear setup error until a genuine Nano checkpoint is supplied. |
 
-The supplied `best.pt` checkpoint is preserved byte-for-byte and is mapped to `YOLO26s` because its embedded metadata identifies `yolo26s`. The application does not relabel this model, fall back to it for Nano requests, or manufacture an additional checkpoint. See [`inference-backend/models/MODELS.md`](inference-backend/models/MODELS.md) for the asset policy.
+The supplied `best.pt` checkpoint is preserved byte-for-byte as `yolo26s.pt` and is mapped to `YOLO26s` because its embedded metadata identifies `yolo26s`. The application does not use this model for Nano requests or manufacture an additional checkpoint. See [`inference-backend/models/MODELS.md`](inference-backend/models/MODELS.md) for the asset policy.
 
 ## Repository layout
 
@@ -40,7 +40,7 @@ pnpm install
 pnpm dev
 ```
 
-Set `VITE_INFERENCE_API_URL=http://127.0.0.1:8000` for the local frontend, and include the frontend origin in `CORS_ALLOWED_ORIGINS`. Confirm availability at `GET /health`; submit an image to `POST /v1/detections` with multipart fields `file` and `model`.
+When this repository runs through Vite locally, the frontend uses the same-origin `/inference-api` proxy by default. This avoids directing a browser at the sandbox loopback address. To point the local frontend at a different server, set `VITE_INFERENCE_API_URL` to its public URL; include the frontend origin in `CORS_ALLOWED_ORIGINS`. Confirm availability at `GET /health`; submit an image to `POST /v1/detections` with multipart fields `file` and `model`.
 
 ## Vercel frontend deployment
 
@@ -61,7 +61,7 @@ Before the first production deploy, set `CORS_ALLOWED_ORIGINS` in Render to the 
 | Render variable | Required value |
 |---|---|
 | `CORS_ALLOWED_ORIGINS` | Exact Vercel production origin, with no wildcard. |
-| `YOLO26S_MODEL_PATH` | `/app/models/best.pt` unless storing the verified checkpoint elsewhere. |
+| `YOLO26S_MODEL_PATH` | `/app/models/yolo26s.pt` unless storing the verified checkpoint elsewhere. |
 | `YOLO26N_MODEL_PATH` | `/app/models/yolo26n.pt` after a genuine Nano checkpoint is provided. |
 | `INFERENCE_IMAGE_SIZE` | `1280`, retained from the supplied prototype. |
 | `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25`, retained from the supplied prototype. |
