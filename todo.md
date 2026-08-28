@@ -29,10 +29,10 @@
 - [x] Re-run and record post-change production checks against the live Vercel frontend and Render `/health` endpoint after the BlueSentinel/model-family updates.
 - [x] Verify Vercel has deployed the latest GitHub commit and the live UI shows BlueSentinel branding plus YOLO26n/s/m/l/x availability states.
 - [x] Verify Render has redeployed the latest backend commit and its live health/models response matches the expanded registry and keep-alive docs.
-- [ ] Verify the Vercel deployment is serving the newest GitHub commit using a commit-visible release marker.
+- [x] Verify the Vercel deployment is serving the newest GitHub commit using a commit-visible release marker.
 - [x] Expose and verify a live `GET /models` endpoint, or remove the unsupported endpoint claim from the deployment validation checklist.
-- [ ] Fix and verify live Render YOLO26s inference after the multipart request returned HTTP 502, preserving the truthful five-variant availability states.
-- [ ] Replace the CUDA-capable PyTorch dependency resolution in the CPU-only Render container with verified CPU-only PyTorch and torchvision wheels, then re-test YOLO26s inference locally and in production.
+- [x] Fix and verify live Render YOLO26s inference after the multipart request returned HTTP 502, preserving the truthful five-variant availability states.
+- [x] Replace the CUDA-capable PyTorch dependency resolution in the CPU-only Render container with verified CPU-only PyTorch and torchvision wheels, then re-test YOLO26s inference locally and in production; the final deployment uses the verified lighter ONNX Runtime path instead.
 - [x] Align the frontend’s stated and client-side image upload limit with the 4 MB Render production cap so users receive accurate preflight guidance.
 - [x] Complete an evidence-based code, dependency, deployment, API, and ML-security audit using the supplied requirements document; document unsupported or untestable requests explicitly.
 - [x] Refactor the FastAPI backend into maintainable configuration, API-route, schema, service, and security-logging modules without changing the trusted supplied YOLO26s checkpoint.
@@ -41,7 +41,7 @@
 - [x] Add in-application documentation pages and navigation, including a defensive Security & Reliability view and an interactive architecture diagram; replace links that send users to GitHub for reading documentation.
 - [x] Remove the requested NUCAT and Melas Quiz/Incridea project-background achievements from all project-facing documentation and UI.
 - [x] Test controlled synthetic controls, a distinct non-marine real image, and a legally reusable real marine-litter image; report only directly observed inference behavior and keep test-set metrics pending when the locked labeled set is absent. No standalone user-provided shoreline bytes were available; that user-image smoke test remains pending until supplied.
-- [ ] Re-run frontend, backend, dependency, security, integration, and live deployment verification; push the verified revision to GitHub and confirm Vercel/Render deployment status.
+- [ ] Re-run frontend, backend, dependency, security, integration, and live deployment verification; push the verified revision to GitHub and confirm Vercel/Render deployment status. Browser end-to-end integration remains blocked until the current Vercel origin is added to Render CORS.
 - [x] Make the backend test command self-contained so `pytest` discovers the local `app` package without manually setting `PYTHONPATH`.
 - [x] Fix backend test-module imports and remove the undeclared async-test dependency so the full `pytest` suite runs with the documented requirements.
 - [x] Ensure rate limiting does not trust a spoofable client-provided forwarded-IP header, and make filename-security regression tests independent of rate-limit exhaustion.
@@ -55,4 +55,5 @@
 - [x] Align the future checkpoint ignore exceptions with the YOLO26n/m/l/x Git LFS rules so supported weights can be intentionally staged when supplied.
 - [x] Replace the stale pre-hardening Render smoke-test note with the current local validation evidence and a clear pending-production verification boundary.
 - [x] Derive and validate an ONNX deployment artifact from the checksum-pinned supplied YOLO26s checkpoint so the Render Free CPU service can avoid loading the heavyweight PyTorch runtime at request time.
-- [ ] Push the checksum-pinned direct ONNX revision and verify one live Render inference request, retaining a truthful failure record if the free instance remains unable to serve it.
+- [x] Push the checksum-pinned direct ONNX revision and verify one live Render inference request, retaining a truthful failure record if the free instance remains unable to serve it.
+- [ ] Update Render `CORS_ALLOWED_ORIGINS` manually to include `https://bluesentinel-ai.vercel.app`, then re-run the browser preflight from the current Vercel origin.
