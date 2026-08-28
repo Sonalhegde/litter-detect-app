@@ -32,6 +32,7 @@ import { DocumentationCenter, type DocumentationTopicId } from "@/components/Doc
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const SUPPORTED_BROWSER_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const RELEASE_SHA = __BLUESENTINEL_RELEASE__;
 
 const modelCards: Array<{ id: ModelId; name: string; meta: string; description: string }> = [
   { id: "yolo26n", name: "YOLO26n", meta: "Edge baseline", description: "Lightweight variant · checkpoint not installed" },
@@ -336,7 +337,7 @@ export default function Home() {
         <DocumentationCenter activeTopic={activeDocumentation} onTopicChange={setActiveDocumentation} />
       </main>
 
-      <footer><span>BlueSentinel AI · marine debris detection platform</span><a href="#documentation">In-application documentation</a></footer>
+      <footer><span>BlueSentinel AI · marine debris detection platform</span><span className="release-marker">Release {RELEASE_SHA}</span><a href="#documentation">In-application documentation</a></footer>
     </div>
   );
 }
