@@ -163,7 +163,7 @@ export default defineConfig({
   },
   envDir: path.resolve(import.meta.dirname, "client"),
   define: {
-    __BLUESENTINEL_RELEASE__: JSON.stringify(
+    __RELEASE_SHA__: JSON.stringify(
       process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
         process.env.GITHUB_SHA?.slice(0, 7) ??
         "local",

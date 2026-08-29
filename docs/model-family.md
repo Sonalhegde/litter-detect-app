@@ -4,7 +4,7 @@ YOLO is a one-stage object-detection family: an image passes through a learned n
 
 Ultralytics describes YOLO26 as a unified real-time family with native end-to-end inference, a lighter detection head, DFL-free box regression, Progressive Loss, Small-Target-Aware Label Assignment (STAL), and MuSGD in the official training recipe.[1] The official model family supports the five detection scales below.[1]
 
-| Model | Official fused parameters | Official fused FLOPs | Relative role | BlueSentinel status |
+| Model | Official fused parameters | Official fused FLOPs | Relative role | Shoreline Litter Detector status |
 |---|---:|---:|---|---|
 | YOLO26n | 2.4M | 5.4B | Lightweight edge baseline | Not installed |
 | YOLO26s | 9.5M | 20.7B | Speed/accuracy balance | Supplied custom checkpoint |

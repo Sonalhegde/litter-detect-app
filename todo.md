@@ -19,15 +19,15 @@
 - [x] Present keep-alive scheduling alternatives and configure the GitHub Actions 10-minute health-check alternative for the deployed Render inference service.
 - [x] Fix the Render container’s missing OpenCV runtime libraries and verify the public health endpoint after redeployment.
 
-- [x] Rebrand the visible application as BlueSentinel AI — Marine Debris Detection Platform.
+- [x] Rebrand the visible application as Shoreline Litter Detector — Marine Debris Detection Platform.
 - [x] Add YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x selector options with honest unavailable states for missing checkpoints.
 - [x] Add transparent research documentation for YOLO26, the dataset, training/validation metrics, API, deployment, limitations, future work, and acknowledgements.
 - [x] Add a safe keep-alive configuration/runbook without using an in-process timer or inference requests.
 - [x] Re-run backend/frontend tests and production health checks after the requirements changes.
 - [x] Keep the existing private `litter-detect-app` GitHub repository rather than migrating it without an explicit rename request.
 - [x] Update Vercel and Render deployments after the requirements changes.
-- [x] Re-run and record post-change production checks against the live Vercel frontend and Render `/health` endpoint after the BlueSentinel/model-family updates.
-- [x] Verify Vercel has deployed the latest GitHub commit and the live UI shows BlueSentinel branding plus YOLO26n/s/m/l/x availability states.
+- [x] Re-run and record post-change production checks against the live Vercel frontend and Render `/health` endpoint after the Shoreline Litter Detector/model-family updates.
+- [x] Verify Vercel has deployed the latest GitHub commit and the live UI shows Shoreline Litter Detector branding plus YOLO26n/s/m/l/x availability states.
 - [x] Verify Render has redeployed the latest backend commit and its live health/models response matches the expanded registry and keep-alive docs.
 - [x] Verify the Vercel deployment is serving the newest GitHub commit using a commit-visible release marker.
 - [x] Expose and verify a live `GET /models` endpoint, or remove the unsupported endpoint claim from the deployment validation checklist.

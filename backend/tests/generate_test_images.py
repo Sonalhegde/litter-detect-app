@@ -32,7 +32,7 @@ def write_fixtures(output_dir: Path) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate safe BlueSentinel image fixtures.")
+    parser = argparse.ArgumentParser(description="Generate safe Shoreline Litter Detector image fixtures.")
     parser.add_argument("--output-dir", type=Path, default=Path(__file__).parent / "assets" / "generated")
     args = parser.parse_args()
     write_fixtures(args.output_dir)

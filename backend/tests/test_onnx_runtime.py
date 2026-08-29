@@ -32,3 +32,20 @@ def test_postprocessing_restores_letterboxed_coordinates_and_confidence() -> Non
     assert class_id == 0
     assert round(confidence, 4) == 0.9
     assert np.allclose(box, [400, 150, 600, 350], atol=0.1)
+
+
+def test_inference_uses_declared_model_input_size() -> None:
+    from dataclasses import replace
+    from app.config import load_settings
+    from app.services.image_processing import DecodedImage
+    from app.services.inference import InferenceService, ModelRegistry
+
+    settings = replace(load_settings(), image_size=960)
+    registry = ModelRegistry(settings)
+    service = InferenceService(settings, registry)
+    image = Image.new("RGB", (640, 480), color=(20, 120, 80))
+    decoded = DecodedImage(image=image, width=640, height=480, image_format="PNG")
+    response = service._detect_sync(decoded, "yolo26s")
+    assert response.runtime.input_size == 320
+    assert response.image_size.width == 640
+    assert response.image_size.height == 480

@@ -226,12 +226,17 @@ class InferenceService:
     def _detect_sync(self, image: DecodedImage, model_id: ModelId) -> DetectionResponse:
         model_spec, onnx_session = self.registry.get_model(model_id)
         started_at = time.perf_counter()
-        model_input = _prepare_image_tensor(image.image, self.settings.image_size)
-        input_name = onnx_session.get_inputs()[0].name
+        model_input_info = onnx_session.get_inputs()[0]
+        input_shape = model_input_info.shape
+        if len(input_shape) != 4 or input_shape[2] != input_shape[3] or not isinstance(input_shape[2], int):
+            raise ValueError("The trusted ONNX model must declare a fixed square image input.")
+        model_input_size = input_shape[2]
+        model_input = _prepare_image_tensor(image.image, model_input_size)
+        input_name = model_input_info.name
         raw_output = onnx_session.run(None, {input_name: model_input})[0]
         elapsed = time.perf_counter() - started_at
         class_names = _class_names_from_metadata(onnx_session)
-        raw_detections = _postprocess_yolo26_output(raw_output, image.width, image.height, self.settings.image_size, self.settings.confidence_threshold, self.settings.iou_threshold)
+        raw_detections = _postprocess_yolo26_output(raw_output, image.width, image.height, model_input_size, self.settings.confidence_threshold, self.settings.iou_threshold)
         detections: list[Detection] = []
         for index, (class_id, confidence, box) in enumerate(raw_detections, start=1):
             detections.append(Detection(id=index, class_name=class_names.get(class_id, f"class_{class_id}"), confidence=round(confidence, 4), bbox=BoundingBox(x1=round(float(box[0]), 1), y1=round(float(box[1]), 1), x2=round(float(box[2]), 1), y2=round(float(box[3]), 1))))
@@ -244,5 +249,5 @@ class InferenceService:
             count=len(detections),
             inference_time_sec=round(elapsed, 3),
             image_size=ImageSize(width=image.width, height=image.height),
-            runtime=RuntimeConfiguration(confidence_threshold=self.settings.confidence_threshold, iou_threshold=self.settings.iou_threshold, input_size=self.settings.image_size, device="cpu", engine="onnxruntime"),
+            runtime=RuntimeConfiguration(confidence_threshold=self.settings.confidence_threshold, iou_threshold=self.settings.iou_threshold, input_size=model_input_size, device="cpu", engine="onnxruntime"),
         )

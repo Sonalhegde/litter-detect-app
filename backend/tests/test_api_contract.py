@@ -4,7 +4,7 @@ from conftest import image_bytes
 
 
 def test_root_health_and_model_alias_contract(client) -> None:  # type: ignore[no-untyped-def]
-    assert client.get("/").json() == {"status": "ok", "service": "bluesentinel-ai-inference"}
+    assert client.get("/").json() == {"status": "ok", "service": "shoreline-litter-detector-inference"}
     health = client.get("/health")
     assert health.status_code == 200
     assert health.json()["status"] == "starting"

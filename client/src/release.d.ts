@@ -1,1 +1,1 @@
-declare const __BLUESENTINEL_RELEASE__: string;
+declare const __RELEASE_SHA__: string;

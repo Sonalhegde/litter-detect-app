@@ -1,75 +1,70 @@
-# BlueSentinel AI — Marine Debris Detection Platform
+# Shoreline Litter Detector
 
-BlueSentinel AI is a university-level research prototype for detecting the trained `litter` class in coastal and marine images. It combines a React/Vite interface with a FastAPI inference service and preserves the supplied YOLO26s workflow: upload an image, select a model, run inference, inspect confidence and coordinates, and review the result visually.
+Shoreline Litter Detector is a web tool for reviewing coastal photographs. Upload a JPEG, PNG, or WebP image and the service runs the supplied YOLO26s object detector, which has one trained class: `litter`. The browser shows the returned bounding boxes and confidence scores over the uploaded image.
 
-## Current model status
+## Run locally
 
-The supplied `best.pt` checkpoint is preserved byte-for-byte as `backend/models/yolo26s.pt`. For constrained CPU deployment, the backend uses a separately checksum-pinned `backend/models/yolo26s.onnx` artifact derived from that supplied YOLO26s checkpoint; it does not replace or retrain the supplied file. The interface exposes YOLO26n, YOLO26s, YOLO26m, YOLO26l, and YOLO26x, but each option is marked unavailable until its own checkpoint is installed. The application never substitutes a different model or fabricates detections.
-
-| Variant | Intended role | Current project status |
-|---|---|---|
-| YOLO26n | Lightweight edge baseline | Checkpoint not installed |
-| YOLO26s | Speed/accuracy balance | Supplied checkpoint preserved; checksum-pinned ONNX deployment artifact available |
-| YOLO26m | Higher-capacity experiment | Checkpoint not installed |
-| YOLO26l | Large high-accuracy experiment | Checkpoint not installed |
-| YOLO26x | Maximum-capacity experiment | Checkpoint not installed |
-
-Official COCO benchmark values are not marine-litter results and remain separate from this project's reported validation record.
-
-## Local development
-
-### Backend
+Start the inference API:
 
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API exposes `/`, `/health`, `/models`, and `POST /v1/detections`; `/detect` is retained as a compatibility alias. FastAPI's interactive documentation is available at `/docs`.
-
-### Frontend
+In a second terminal, start the frontend:
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-For local preview, the frontend uses the same-origin `/inference-api` proxy. For a separate deployment, set `VITE_INFERENCE_API_URL` to the public backend URL.
+The local Vite setup proxies `/inference-api` to the backend. For a separate deployment, set `VITE_INFERENCE_API_URL` to the backend origin.
 
-## Environment variables
+## Configuration
 
-The backend accepts `CORS_ALLOWED_ORIGINS`, `YOLO26S_MODEL_PATH`, `YOLO26S_MODEL_SHA256`, `YOLO26N_MODEL_PATH`, `YOLO26M_MODEL_PATH`, `YOLO26L_MODEL_PATH`, `YOLO26X_MODEL_PATH`, `INFERENCE_IMAGE_SIZE`, `INFERENCE_CONFIDENCE_THRESHOLD`, `INFERENCE_IOU_THRESHOLD`, `MAX_UPLOAD_MB`, `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT`, `MAX_IMAGE_PIXELS`, `INFERENCE_CONCURRENCY`, `RATE_LIMIT_REQUESTS`, and `RATE_LIMIT_WINDOW_SECONDS`. The frontend accepts `VITE_INFERENCE_API_URL`.
+The backend reads `CORS_ALLOWED_ORIGINS`, model paths and `YOLO26S_MODEL_SHA256`, `INFERENCE_IMAGE_SIZE`, `INFERENCE_CONFIDENCE_THRESHOLD`, `INFERENCE_IOU_THRESHOLD`, upload and image limits, the inference concurrency limit, and rate-limit settings. The frontend reads `VITE_INFERENCE_API_URL`. Do not commit `.env` files; use `.env.example` when documenting local values.
 
-The default confidence threshold is 0.25 and the default IoU threshold is 0.45. Local development defaults to a 960-pixel input size; the Render free-tier blueprint uses a fixed 320-pixel ONNX artifact with single-thread native pools to keep CPU inference within a conservative resource envelope. These values affect inference behavior, not training accuracy. Render runs CPU inference; it is not configured as a GPU service.
+The deployed ONNX artifact declares a fixed 320 × 320 input. The backend now reads that size from the loaded model at runtime, so preprocessing and coordinate restoration cannot silently disagree with the checkpoint. The default confidence threshold is 0.25 and the default IoU threshold is 0.45.
+
+## API
+
+`GET /health` reports service and checkpoint availability. `POST /v1/detections` accepts multipart fields `file` and `model=yolo26s`, and returns `detections`, `count`, `image_size`, `inference_time_sec`, and runtime settings. Compatibility aliases are available at `GET /api/model` and `POST /api/detect/image`.
+
+```bash
+curl -X POST https://litter-detect-inference.onrender.com/v1/detections \
+  -F 'file=@shoreline.jpg' \
+  -F 'model=yolo26s'
+```
 
 ## Deployment
 
-The frontend is configured for Vercel through `vercel.json`. The inference service is configured for Render through `render.yaml` and `backend/Dockerfile`. Render's free service can spin down after inactivity, so `docs/keep-alive.md` documents a low-frequency health-check option and its trade-offs. No in-process timer is used.
+The frontend is configured for Vercel through `vercel.json`. The inference API is configured for Render through `render.yaml` and `backend/Dockerfile`. Set the Render CORS origin to the exact frontend URL and keep the checksum value paired with the deployed ONNX artifact. Render’s free service may sleep when idle, so the first request can take longer; request failures are shown as errors rather than being reported as a successful zero-detection result.
 
-## Research transparency
+## Model and limitations
 
-The project documents the supplied dataset split and reported validation figures without relabeling them as test results. The locked 852-image test set has not been evaluated in this application and must remain separate. The trained model is single-class: a zero-result means that no object matching the trained `litter` class exceeded the configured threshold; it does not prove that an image contains no objects or no marine debris.
+Only YOLO26s is currently deployed. The n, m, l, and x variants are not offered as UI features because compatible checkpoints are not installed. The original training dataset and complete provenance record were not included with the supplied checkpoint, so this project does not claim a more specific dataset attribution.
 
-The product's **Research notes** link opens the same project documentation inside the application, including the architecture diagram, model-family status, security and reliability controls, API contract, validation boundaries, limitations, and future work. The source documentation is retained under `docs/` for technical review.
+This is a single-class detector. It does not identify material type, estimate environmental impact, or replace field inspection. Accuracy depends on lighting, camera angle, distance, occlusion, background, and image quality. It has not been validated for scientific, regulatory, or operational decision-making. A zero-detection result means no prediction crossed the configured threshold; it does not prove that the image contains no litter.
 
 ## Tests
 
 ```bash
-pnpm test
-pnpm check
-pnpm build
-cd backend
-pytest -q
+pnpm test -- --run
+pnpm run build:frontend
+cd backend && pytest -q
 ```
 
-## Credits and references
+The backend tests cover image validation, safe API errors, model integrity, preprocessing, postprocessing, and the regression where settings request 960 pixels while the bundled ONNX model declares 320 pixels. Real positive coastal-image fixtures were not present in the supplied repository, so the remaining validation step is to run the service against 3–5 labeled positive images from the project dataset.
 
-BlueSentinel AI uses FastAPI, ONNX Runtime, NumPy, headless OpenCV, React, Vite, Pillow, and the supplied marine-litter checkpoint. Ultralytics and CPU-only PyTorch were used only in the controlled local export/validation environment, not in the deployed request path. Official YOLO26 terminology is based on [Ultralytics YOLO26 documentation](https://docs.ultralytics.com/models/yolo26), the [YOLO26 training recipe](https://docs.ultralytics.com/guides/yolo26-training-recipe), and [Ultralytics training documentation](https://docs.ultralytics.com/modes/train). Dataset attribution remains to be completed from the original dataset source because the supplied prototype did not include authoritative dataset creator details.
+## Credits
 
-## Known limitations and future work
+Built by **Sonal Hegde**. GitHub: [Sonalhegde](https://github.com/Sonalhegde).
 
-This is a single-class detector with possible false positives, false negatives, domain shift, small-object difficulty, and CPU latency. It does not include a marine-scene relevance classifier, video tracking, segmentation, or locked-test evaluation. Future work includes dataset auditing, multi-class taxonomy, video and drone input, temporal tracking, segmentation, quantization, and edge-device benchmarking.
+With thanks to **Dr. Sachinandan Dutta**, Assistant Professor, for guidance on the project. His areas of interest include fisheries management, ecosystem modelling, and marine ecology. Contact: `s.dutta@squ.edu.om`.
+
+## Further documentation
+
+The application includes an in-page documentation section covering the overview, method, model, API reference, limitations, and credits. More deployment and research notes are retained in [`docs/`](docs/).
