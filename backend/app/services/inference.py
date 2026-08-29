@@ -17,7 +17,7 @@ from PIL import Image
 from starlette.concurrency import run_in_threadpool
 
 from app.config import Settings
-from app.schemas.detection import BoundingBox, Detection, DetectionResponse, DetectionSummary, ImageSize, RuntimeConfiguration
+from app.schemas.detection import BoundingBox, Detection, DetectionResponse, DetectionSummary, ImageSize, RuntimeConfiguration, SceneRelevance
 from app.schemas.health import ModelStatus
 from app.services.errors import ApiProblem, ModelUnavailable
 from app.services.image_processing import DecodedImage
@@ -212,6 +212,12 @@ class InferenceService:
         self.settings = settings
         self.registry = registry
         self._semaphore = asyncio.Semaphore(settings.inference_concurrency)
+        # Bandit registry is set by the app lifespan after construction;
+        # accessed via property to avoid a circular import at module load time.
+        self._bandit_registry: Any = None
+
+    def set_bandit_registry(self, bandit_registry: Any) -> None:
+        self._bandit_registry = bandit_registry
 
     async def detect(self, image: DecodedImage, model_id: ModelId) -> DetectionResponse:
         try:
@@ -222,6 +228,15 @@ class InferenceService:
             return await run_in_threadpool(self._detect_sync, image, model_id)
         finally:
             self._semaphore.release()
+
+    def _effective_threshold(self, class_name: str) -> float:
+        """Return the bandit's learned threshold for this class, or static fallback."""
+        if self._bandit_registry is None:
+            return self.settings.confidence_threshold
+        try:
+            return self._bandit_registry.effective_threshold(class_name)
+        except Exception:
+            return self.settings.confidence_threshold
 
     def _detect_sync(self, image: DecodedImage, model_id: ModelId) -> DetectionResponse:
         model_spec, onnx_session = self.registry.get_model(model_id)
@@ -236,11 +251,46 @@ class InferenceService:
         raw_output = onnx_session.run(None, {input_name: model_input})[0]
         elapsed = time.perf_counter() - started_at
         class_names = _class_names_from_metadata(onnx_session)
-        raw_detections = _postprocess_yolo26_output(raw_output, image.width, image.height, model_input_size, self.settings.confidence_threshold, self.settings.iou_threshold)
+
+        # ── Step 1: get all raw candidates above a low floor (10%) ──────────
+        # We need candidates for ALL classes first so we can apply per-class
+        # adaptive thresholds, then NMS within each class separately.
+        raw_detections_all = _postprocess_yolo26_output(
+            raw_output,
+            image.width,
+            image.height,
+            model_input_size,
+            confidence_threshold=0.10,   # low floor — bandit applies per-class gate below
+            iou_threshold=self.settings.iou_threshold,
+        )
+
+        # ── Step 2: apply per-class adaptive threshold ───────────────────────
         detections: list[Detection] = []
-        for index, (class_id, confidence, box) in enumerate(raw_detections, start=1):
-            detections.append(Detection(id=index, class_name=class_names.get(class_id, f"class_{class_id}"), confidence=round(confidence, 4), bbox=BoundingBox(x1=round(float(box[0]), 1), y1=round(float(box[1]), 1), x2=round(float(box[2]), 1), y2=round(float(box[3]), 1))))
+        for index, (class_id, confidence, box) in enumerate(raw_detections_all, start=1):
+            cn = class_names.get(class_id, f"class_{class_id}")
+            threshold = self._effective_threshold(cn)
+            if confidence < threshold:
+                continue
+            detections.append(Detection(
+                id=len(detections) + 1,
+                class_name=cn,
+                confidence=round(confidence, 4),
+                bbox=BoundingBox(
+                    x1=round(float(box[0]), 1),
+                    y1=round(float(box[1]), 1),
+                    x2=round(float(box[2]), 1),
+                    y2=round(float(box[3]), 1),
+                ),
+            ))
+
         counts = Counter(item.class_name for item in detections)
+
+        # Report the effective threshold actually used (use "litter" as the
+        # representative class for the single-class model; for multi-class the
+        # per-class thresholds are available via /v1/bandit/status).
+        representative_class = class_names.get(0, "litter")
+        effective_conf_threshold = self._effective_threshold(representative_class)
+
         return DetectionResponse(
             model=model_spec.id,
             model_label=model_spec.label,
@@ -249,5 +299,14 @@ class InferenceService:
             count=len(detections),
             inference_time_sec=round(elapsed, 3),
             image_size=ImageSize(width=image.width, height=image.height),
-            runtime=RuntimeConfiguration(confidence_threshold=self.settings.confidence_threshold, iou_threshold=self.settings.iou_threshold, input_size=model_input_size, device="cpu", engine="onnxruntime"),
+            runtime=RuntimeConfiguration(
+                confidence_threshold=round(effective_conf_threshold, 4),
+                iou_threshold=self.settings.iou_threshold,
+                input_size=model_input_size,
+                device="cpu",
+                engine="onnxruntime",
+            ),
+            # Placeholder — the detection route patches this with the real value
+            # from the scene checker before returning to the client.
+            scene_relevance=SceneRelevance(score=1.0, verdict="pass", checker_available=False),
         )

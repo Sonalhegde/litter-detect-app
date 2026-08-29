@@ -9,12 +9,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import detection, health, model
+from app.api import detection, feedback, health, model
 from app.config import Settings, load_settings
 from app.core.logging import RequestAuditMiddleware
+from app.services.bandit import BanditRegistry
 from app.services.errors import ApiProblem
 from app.services.inference import InferenceService, ModelRegistry
 from app.services.rate_limit import SlidingWindowRateLimiter
+from app.services.scene_check import SceneChecker
 
 
 def error_payload(request: Request, code: str, message: str) -> dict[str, object]:
@@ -31,12 +33,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.model_registry = registry
         app.state.inference_service = InferenceService(configured_settings, registry)
         app.state.rate_limiter = SlidingWindowRateLimiter(configured_settings.rate_limit_requests, configured_settings.rate_limit_window_seconds)
+        # Bandit registry: loads persisted weights from SQLite on startup
+        app.state.bandit_registry = BanditRegistry()
+        # Scene checker: loads CLIP ViT-B/32 weights once; degrades gracefully if not installed
+        app.state.scene_checker = SceneChecker()
         yield
 
     application = FastAPI(
         title="Sentinel Inference API",
-        description="Trusted YOLO26s marine-litter inference with defensive upload validation.",
-        version="3.0.0",
+        description="Trusted YOLO26s marine-litter inference with defensive upload validation and adaptive confidence thresholding.",
+        version="4.0.0",
         lifespan=lifespan,
     )
     application.add_middleware(RequestAuditMiddleware)
@@ -80,6 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(health.router)
     application.include_router(model.router)
     application.include_router(detection.router)
+    application.include_router(feedback.router)
     return application
 
 

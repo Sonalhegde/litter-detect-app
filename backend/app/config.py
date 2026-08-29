@@ -11,9 +11,7 @@ DEFAULT_TRUSTED_YOLO26S_SHA256 = "969bbf4733dd1486478e55cbb511569dc0bb7a75cf8895
 DEFAULT_ALLOWED_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://litter-detect-app.vercel.app",
-    "https://bluesentinel-ai.vercel.app",
-    "https://sentinel-sonalhegde.vercel.app",
+    "https://sentinalapp.vercel.app",
 )
 
 

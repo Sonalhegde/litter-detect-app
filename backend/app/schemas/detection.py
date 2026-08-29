@@ -37,6 +37,21 @@ class RuntimeConfiguration(BaseModel):
     engine: Literal["onnxruntime", "pytorch"]
 
 
+class SceneRelevance(BaseModel):
+    score: float = Field(
+        ge=0, le=1,
+        description="CLIP-based coastal scene relevance score (0=unrelated, 1=clearly coastal). "
+                    "Always 1.0 when the scene checker is not installed.",
+    )
+    verdict: Literal["pass", "warn", "block"] = Field(
+        description="pass=run detection normally; warn=borderline scene, results may not be "
+                    "meaningful; block=image is clearly not coastal, detection was skipped.",
+    )
+    checker_available: bool = Field(
+        description="False when open_clip is not installed; score is 1.0 and verdict is 'pass'.",
+    )
+
+
 class DetectionResponse(BaseModel):
     success: Literal[True] = True
     model: Literal["yolo26n", "yolo26s", "yolo26m", "yolo26l", "yolo26x"]
@@ -47,3 +62,6 @@ class DetectionResponse(BaseModel):
     inference_time_sec: float = Field(ge=0)
     image_size: ImageSize
     runtime: RuntimeConfiguration
+    scene_relevance: SceneRelevance = Field(
+        description="Result of the pre-detection coastal scene relevance check.",
+    )
