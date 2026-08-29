@@ -2,7 +2,7 @@
 
 YOLO26 is the model family used by the prototype. Ultralytics describes it as an end-to-end family with native NMS-free inference, a lighter detection head, DFL-free regression, Progressive Loss, STAL, and an updated training recipe.[1]
 
-Shoreline Litter Detector uses only the object-detection task and only the supplied custom YOLO26s marine-litter checkpoint for the currently available workflow. The interface exposes the n/s/m/l/x family choices for future experiments, but a choice is executable only when a compatible checkpoint is present.
+Sentinel uses only the object-detection task and only the supplied custom YOLO26s marine-litter checkpoint for the currently available workflow. The interface exposes the n/s/m/l/x family choices for future experiments, but a choice is executable only when a compatible checkpoint is present.
 
 ## Why YOLO26
 

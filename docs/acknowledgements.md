@@ -1,6 +1,6 @@
 # Credits and acknowledgements
 
-Shoreline Litter Detector uses the Ultralytics framework for YOLO26 inference, PyTorch for tensor computation, FastAPI and Uvicorn for the backend service, React and Vite for the frontend, Pillow for image validation, and OpenCV-compatible runtime dependencies where required by the inference stack.
+Sentinel uses the Ultralytics framework for YOLO26 inference, PyTorch for tensor computation, FastAPI and Uvicorn for the backend service, React and Vite for the frontend, Pillow for image validation, and OpenCV-compatible runtime dependencies where required by the inference stack.
 
 Technical YOLO26 terminology and official model-family information are referenced from [Ultralytics YOLO26 documentation](https://docs.ultralytics.com/models/yolo26), the [YOLO26 training recipe](https://docs.ultralytics.com/guides/yolo26-training-recipe), and [Ultralytics training documentation](https://docs.ultralytics.com/modes/train). The official documentation reports model-family and COCO reference values; this project does not present those as marine-litter performance.
 

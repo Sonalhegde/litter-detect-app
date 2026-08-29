@@ -1,1 +1,1 @@
-"""Security and observability helpers for the Shoreline Litter Detector API."""
+"""Security and observability helpers for the Sentinel API."""

@@ -1,6 +1,6 @@
-# Shoreline Litter Detector
+# Sentinel
 
-Shoreline Litter Detector is a web tool for reviewing coastal photographs. Upload a JPEG, PNG, or WebP image and the service runs the supplied YOLO26s object detector, which has one trained class: `litter`. The browser shows the returned bounding boxes and confidence scores over the uploaded image.
+Sentinel is a web tool for reviewing coastal photographs. Upload a JPEG, PNG, or WebP image and the service runs the supplied YOLO26s object detector, which has one trained class: `litter`. The browser shows the returned bounding boxes and confidence scores over the uploaded image.
 
 ## Run locally
 

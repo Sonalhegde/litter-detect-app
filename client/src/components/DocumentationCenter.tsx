@@ -26,7 +26,7 @@ function DetailContent({ topicId }: { topicId: DocumentationTopicId }) {
     case "credits":
       return <><h3>Credits</h3><p><strong>Built by Sonal Hegde.</strong> See the <a href="https://github.com/Sonalhegde" target="_blank" rel="noreferrer">GitHub profile <ExternalLink size={13} /></a>. LinkedIn and email details can be added here by the project owner.</p><p><strong>With thanks to Dr. Sachinandan Dutta</strong>, Assistant Professor, for guidance on the project. His areas of interest include fisheries management, ecosystem modelling, and marine ecology.</p><p className="credit-contact"><Mail size={14} /> s.dutta@squ.edu.om</p></>;
     default:
-      return <><h3>Overview</h3><p>Shoreline Litter Detector is a small web tool for reviewing coastal photographs. Upload an image and it runs a YOLO26s model that looks for the trained <strong>litter</strong> class, then shows each returned box and confidence score.</p><p>The project keeps the interface intentionally simple so the result is easy to inspect and the model’s limits are clear.</p></>;
+      return <><h3>Overview</h3><p>Sentinel is a small web tool for reviewing coastal photographs. Upload an image and it runs a YOLO26s model that looks for the trained <strong>litter</strong> class, then shows each returned box and confidence score.</p><p>The project keeps the interface intentionally simple so the result is easy to inspect and the model’s limits are clear.</p></>;
   }
 }
 

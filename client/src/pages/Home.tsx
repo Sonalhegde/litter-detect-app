@@ -55,7 +55,7 @@ export default function Home() {
   const apiStatus = health?.status === "healthy" ? "Inference service available" : health ? "Inference service needs attention" : "Checking inference service";
 
   return <div className="app-shell">
-    <header className="topbar"><a className="brand" href="#workspace" aria-label="Shoreline Litter Detector"><span className="brand-mark"><Waves size={19} /></span><span>Shoreline Litter Detector</span></a><span className="service-status">{apiStatus}</span></header>
+    <header className="topbar"><a className="brand" href="#workspace" aria-label="Sentinel"><span className="brand-mark"><Waves size={19} /></span><span>Sentinel</span></a><span className="service-status">{apiStatus}</span></header>
     <main>
       <section className="hero" aria-labelledby="page-title"><div><span className="section-kicker">Coastal image review</span><h1 id="page-title">Detect litter in a shoreline photo.</h1><p>Upload a coastal photo and this tool runs a YOLO26s model trained to detect litter, then shows you what it found.</p></div></section>
       <section id="workspace" className="workspace" aria-label="Litter detection workspace">
@@ -75,6 +75,6 @@ export default function Home() {
       </section>
       <DocumentationCenter activeTopic={activeDocumentation} onTopicChange={setActiveDocumentation} />
     </main>
-    <footer><span>Shoreline Litter Detector</span><span>API: {API_BASE_URL}</span><span>Release {RELEASE_SHA}</span></footer>
+    <footer><span>Sentinel</span><span>API: {API_BASE_URL}</span><span>Release {RELEASE_SHA}</span></footer>
   </div>;
 }

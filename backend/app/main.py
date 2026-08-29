@@ -1,4 +1,4 @@
-"""Shoreline Litter Detector public inference API with safe uploads and trusted local-model loading."""
+"""Sentinel public inference API with safe uploads and trusted local-model loading."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
 
     application = FastAPI(
-        title="Shoreline Litter Detector Inference API",
+        title="Sentinel Inference API",
         description="Trusted YOLO26s marine-litter inference with defensive upload validation.",
         version="3.0.0",
         lifespan=lifespan,

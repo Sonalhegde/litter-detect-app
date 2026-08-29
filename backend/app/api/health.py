@@ -12,7 +12,7 @@ router = APIRouter(tags=["service"])
 
 @router.get("/", response_model=RootResponse)
 def root() -> RootResponse:
-    return RootResponse(status="ok", service="shoreline-litter-detector-inference")
+    return RootResponse(status="ok", service="sentinel-inference")
 
 
 @router.get("/health", response_model=HealthResponse)

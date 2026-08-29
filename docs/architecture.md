@@ -1,6 +1,6 @@
-# Shoreline Litter Detector architecture
+# Sentinel architecture
 
-Shoreline Litter Detector is deliberately split into a static web interface and a constrained model-inference service. The browser never receives model weights and the inference service does not own a database or durable user-upload store. This reduces the public attack surface to a small multipart API and keeps the compute boundary explicit.
+Sentinel is deliberately split into a static web interface and a constrained model-inference service. The browser never receives model weights and the inference service does not own a database or durable user-upload store. This reduces the public attack surface to a small multipart API and keeps the compute boundary explicit.
 
 ```mermaid
 flowchart LR

@@ -1,6 +1,6 @@
-# Shoreline Litter Detector inference backend
+# Sentinel inference backend
 
-This directory is the independently deployable FastAPI inference service for **Shoreline Litter Detector — Marine Debris Detection Platform**. It serves only the supplied, trusted **YOLO26s** model through a checksum-pinned ONNX artifact derived from the preserved supplied checkpoint. The public API never accepts a model path or a model file from a browser; a request can only choose one of the fixed `yolo26n/s/m/l/x` identifiers, and only YOLO26s is currently installed.
+This directory is the independently deployable FastAPI inference service for **Sentinel — Marine Debris Detection Platform**. It serves only the supplied, trusted **YOLO26s** model through a checksum-pinned ONNX artifact derived from the preserved supplied checkpoint. The public API never accepts a model path or a model file from a browser; a request can only choose one of the fixed `yolo26n/s/m/l/x` identifiers, and only YOLO26s is currently installed.
 
 ## Structure
 

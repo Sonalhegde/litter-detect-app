@@ -1,6 +1,6 @@
-# Shoreline Litter Detector overview
+# Sentinel overview
 
-Shoreline Litter Detector demonstrates a browser-to-backend computer-vision workflow for marine and coastal imagery. The system accepts a JPEG, PNG, or WebP image, sends it to a FastAPI inference service, runs the selected YOLO26 checkpoint, and returns structured detections with class labels, confidence scores, coordinates, image dimensions, and elapsed inference time.
+Sentinel demonstrates a browser-to-backend computer-vision workflow for marine and coastal imagery. The system accepts a JPEG, PNG, or WebP image, sends it to a FastAPI inference service, runs the selected YOLO26 checkpoint, and returns structured detections with class labels, confidence scores, coordinates, image dimensions, and elapsed inference time.
 
 The deployed research scope is intentionally narrow. The supplied model is a single-class detector for `litter` and is not a general object detector or a marine-scene relevance classifier. If no detection exceeds the configured threshold, the correct interpretation is **No marine debris detected by this trained litter-class model above the configured threshold**. That result does not prove an image contains no objects or no debris.
 
