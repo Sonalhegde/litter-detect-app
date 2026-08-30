@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, FileImage, LoaderCircle, Upload, Waves, X } from "lucide-react";
+import { AlertCircle, FileImage, ImageOff, LoaderCircle, Upload, Waves, X } from "lucide-react";
 import { Link } from "wouter";
 import {
   API_BASE_URL,
@@ -8,33 +8,31 @@ import {
   formatPercent,
   getHealth,
   maxConfidence,
+  prepareImageForUpload,
   requestDetection,
   type DetectionApiError,
   type DetectionResponse,
   type HealthResponse,
 } from "@/lib/detection";
 
-const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const SUPPORTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const RELEASE_SHA = __RELEASE_SHA__;
 
-// Deterministic per-class colour from the CSS token palette
+// ── Per-class colour ───────────────────────────────────────────────────────────
 const CLASS_COLORS = [
   "var(--cls-0)", "var(--cls-1)", "var(--cls-2)", "var(--cls-3)",
   "var(--cls-4)", "var(--cls-5)", "var(--cls-6)", "var(--cls-7)",
 ];
 function classColor(className: string, index: number) {
-  // Stable hash so the same class name always gets the same colour
   let h = 0;
-  for (let i = 0; i < className.length; i++) h = ((h << 5) - h + className.charCodeAt(i)) | 0;
+  for (let i = 0; i < className.length; i++)
+    h = ((h << 5) - h + className.charCodeAt(i)) | 0;
   return CLASS_COLORS[Math.abs(h) % CLASS_COLORS.length] ?? CLASS_COLORS[index % CLASS_COLORS.length];
 }
 
 function DetectionOverlay({ result }: { result: DetectionResponse }) {
-  // Build a stable class→colour map
   const classNames = [...new Set(result.detections.map((d) => d.className))];
   const colorMap = Object.fromEntries(classNames.map((c, i) => [c, classColor(c, i)]));
-
   return (
     <svg
       aria-label={`${result.count} detection bounding ${result.count === 1 ? "box" : "boxes"}`}
@@ -53,11 +51,7 @@ function DetectionOverlay({ result }: { result: DetectionResponse }) {
               x={det.bbox.x1} y={det.bbox.y1} width={w} height={h} rx="3"
               style={{ stroke: color }}
             />
-            <text
-              className="det-label"
-              x={det.bbox.x1 + 5}
-              y={Math.max(15, det.bbox.y1 - 6)}
-            >
+            <text className="det-label" x={det.bbox.x1 + 5} y={Math.max(15, det.bbox.y1 - 6)}>
               {det.className} {formatPercent(det.confidence)}
             </text>
           </g>
@@ -67,12 +61,16 @@ function DetectionOverlay({ result }: { result: DetectionResponse }) {
   );
 }
 
+// ── Status type ────────────────────────────────────────────────────────────────
+type Status = "idle" | "compressing" | "scanning" | "complete" | "error" | "off-topic";
+
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "scanning" | "complete" | "error">("idle");
+  const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<DetectionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resizeNotice, setResizeNotice] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,26 +87,50 @@ export default function Home() {
     abortRef.current?.abort();
   }, [previewUrl]);
 
-  const selectFile = useCallback((candidate?: File) => {
+  // ── File selection with auto-compression ──────────────────────────────────
+  const selectFile = useCallback(async (candidate?: File) => {
     if (!candidate) return;
     if (candidate.type && !SUPPORTED_TYPES.has(candidate.type)) {
       setError("Choose a JPEG, PNG, or WebP image."); setStatus("error"); return;
     }
-    if (candidate.size > MAX_FILE_SIZE) {
-      setError("This image is larger than 4 MB. Compress it and try again."); setStatus("error"); return;
+
+    setStatus("compressing"); setError(null); setResizeNotice(null);
+
+    let prepared: File;
+    let wasResized = false;
+
+    try {
+      const result = await prepareImageForUpload(candidate);
+      prepared = result.file;
+      wasResized = result.resized;
+      if (wasResized && result.resized) {
+        const fromMb = (result.originalSize / 1024 / 1024).toFixed(1);
+        setResizeNotice(`Image resized from ${fromMb} MB to fit the 4 MB upload limit.`);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+      setStatus("error");
+      return;
     }
-    setFile(candidate);
-    setPreviewUrl(URL.createObjectURL(candidate));
-    setResult(null); setError(null); setStatus("idle");
-  }, []);
+
+    // Build preview from the (possibly compressed) file
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setFile(prepared);
+    setPreviewUrl(URL.createObjectURL(prepared));
+    setResult(null);
+    setStatus("idle");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewUrl]);
 
   const clearWorkspace = useCallback(() => {
     abortRef.current?.abort();
-    setFile(null); setPreviewUrl(null); setResult(null); setError(null); setStatus("idle");
+    setFile(null); setPreviewUrl(null); setResult(null);
+    setError(null); setResizeNotice(null); setStatus("idle");
     if (inputRef.current) inputRef.current.value = "";
   }, []);
 
-  const runDetection = useCallback(async () => {
+  // ── Run detection (optionally forcing past scene block) ───────────────────
+  const runDetection = useCallback(async (force = false) => {
     if (!file) return;
     const modelEntry = health?.models.find((m) => m.id === "yolo26s");
     if (modelEntry && !modelEntry.available) {
@@ -119,9 +141,18 @@ export default function Home() {
     const controller = new AbortController();
     abortRef.current = controller;
     setStatus("scanning"); setError(null); setResult(null);
+
     try {
-      setResult(await requestDetection(file, "yolo26s", controller.signal));
-      setStatus("complete");
+      const res = await requestDetection(file, "yolo26s", controller.signal, force);
+
+      // Hard-blocked by scene check and user didn't force
+      if (res.sceneRelevance.verdict === "block" && !force) {
+        setResult(res);
+        setStatus("off-topic");
+      } else {
+        setResult(res);
+        setStatus("complete");
+      }
       void refreshHealth();
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
@@ -139,13 +170,15 @@ export default function Home() {
     health ? "Inference service needs attention" :
     "Checking inference service…";
 
-  // Build class→colour map for the results list
   const classNames = result ? [...new Set(result.detections.map((d) => d.className))] : [];
   const colorMap = Object.fromEntries(classNames.map((c, i) => [c, classColor(c, i)]));
 
+  // Soft-warn: scene checker said "warn" but detection ran anyway
+  const sceneWarn = status === "complete" && result?.sceneRelevance.verdict === "warn";
+
   return (
     <div className="app-shell">
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* Header */}
       <header>
         <div className="page-width topbar">
           <div className="topbar-left">
@@ -159,7 +192,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ── Main ───────────────────────────────────────────────────────── */}
       <main>
         <div className="page-width">
           {/* Hero */}
@@ -175,29 +207,39 @@ export default function Home() {
           {/* Workspace */}
           <section id="workspace" className="workspace" aria-label="Litter detection workspace">
 
-            {/* Upload panel */}
+            {/* ── Upload panel ──────────────────────────────────────────── */}
             <section className="panel" aria-label="Image upload">
               <div className="panel-header">
                 <div className="panel-header-meta">
                   <h2>Choose an image</h2>
                 </div>
-                <span className="panel-constraint">JPEG, PNG, WebP · 4 MB max</span>
+                <span className="panel-constraint">JPEG, PNG, WebP · large photos auto-resized</span>
               </div>
 
-              {!previewUrl ? (
+              {/* Compressing spinner */}
+              {status === "compressing" && (
+                <div className="result-empty" style={{ minHeight: 160 }}>
+                  <LoaderCircle className="spin" size={22} />
+                  <div><h3>Preparing image…</h3><p>Resizing to fit upload limits.</p></div>
+                </div>
+              )}
+
+              {status !== "compressing" && !previewUrl && (
                 <button
                   type="button"
                   className={`dropzone${dragActive ? " dropzone--active" : ""}`}
                   onClick={() => inputRef.current?.click()}
                   onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                   onDragLeave={() => setDragActive(false)}
-                  onDrop={(e) => { e.preventDefault(); setDragActive(false); selectFile(e.dataTransfer.files?.[0]); }}
+                  onDrop={(e) => { e.preventDefault(); setDragActive(false); void selectFile(e.dataTransfer.files?.[0]); }}
                 >
                   <Upload size={22} />
                   <strong>Drop an image here</strong>
                   <span>or tap to choose a file</span>
                 </button>
-              ) : (
+              )}
+
+              {status !== "compressing" && previewUrl && (
                 <div className="preview-wrap">
                   <img className="preview-img" src={previewUrl} alt={`Selected: ${file?.name ?? "image"}`} />
                   <div className="preview-meta">
@@ -215,8 +257,13 @@ export default function Home() {
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 hidden
-                onChange={(e) => selectFile(e.target.files?.[0])}
+                onChange={(e) => void selectFile(e.target.files?.[0])}
               />
+
+              {/* Resize notice */}
+              {resizeNotice && (
+                <p className="resize-notice">{resizeNotice}</p>
+              )}
 
               <div className="model-note">
                 <strong>Model</strong>
@@ -227,53 +274,58 @@ export default function Home() {
                 <button
                   type="button"
                   className="btn-primary"
-                  disabled={!file || status === "scanning"}
-                  onClick={() => void runDetection()}
+                  disabled={!file || status === "scanning" || status === "compressing"}
+                  onClick={() => void runDetection(false)}
                 >
                   {status === "scanning"
                     ? <><LoaderCircle className="spin" size={16} /> Analyzing…</>
                     : "Run detection"}
                 </button>
-                {file && (
+                {file && status !== "compressing" && (
                   <button type="button" className="btn-secondary" onClick={clearWorkspace}>
                     Clear
                   </button>
                 )}
               </div>
 
-              {error && (
+              {/* Genuine error (bad file, network, server) */}
+              {status === "error" && error && (
                 <div className="error-banner" role="alert">
                   <AlertCircle size={17} style={{ flexShrink: 0, marginTop: 1 }} />
                   <div>
                     <strong>Detection failed</strong>
                     <p>{error}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void runDetection()}
-                    disabled={!file || status === "scanning"}
-                    aria-label="Retry detection"
-                  >
-                    Retry
-                  </button>
+                  {file && (
+                    <button
+                      type="button"
+                      onClick={() => void runDetection(false)}
+                      disabled={status === "scanning"}
+                      aria-label="Retry detection"
+                    >
+                      Retry
+                    </button>
+                  )}
                 </div>
               )}
             </section>
 
-            {/* Result panel */}
+            {/* ── Result panel ──────────────────────────────────────────── */}
             <section className="panel" aria-label="Detection result" aria-live="polite">
               <div className="panel-header">
                 <div className="panel-header-meta">
                   <h2>
                     {status === "complete" && result
                       ? result.count > 0 ? "Litter detected" : "No litter found"
+                      : status === "off-topic"
+                      ? "Not a coastal scene"
                       : "Result"}
                   </h2>
                 </div>
               </div>
 
-              {/* Empty — no file chosen */}
-              {!previewUrl && (
+              {/* Empty */}
+              {!previewUrl && status !== "compressing" && (
                 <div className="result-empty">
                   <FileImage size={28} />
                   <div>
@@ -294,8 +346,8 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Ready — file chosen, not yet run */}
-              {previewUrl && status !== "scanning" && !result && (
+              {/* Ready */}
+              {previewUrl && status === "idle" && !result && (
                 <div className="result-empty">
                   <FileImage size={28} />
                   <div>
@@ -305,9 +357,53 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Complete */}
+              {/* ── Off-topic / scene blocked ──────────────────────────── */}
+              {status === "off-topic" && result && (
+                <div className="scene-block">
+                  <ImageOff size={28} />
+                  <div>
+                    <h3>This doesn't look like a coastal photo.</h3>
+                    <p>
+                      The scene relevance check scored this image at{" "}
+                      {formatPercent(result.sceneRelevance.score)}, which is below the
+                      threshold for a shoreline scene. Results are likely to be meaningless
+                      on a non-coastal image.
+                    </p>
+                    <div className="scene-block-actions">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={clearWorkspace}
+                      >
+                        Use a different image
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => void runDetection(true)}
+                        disabled={status === "scanning"}
+                      >
+                        Run detection anyway
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Complete results ───────────────────────────────────── */}
               {result && status === "complete" && (
                 <div>
+                  {/* Soft scene warning */}
+                  {sceneWarn && (
+                    <div className="scene-warn" role="note">
+                      <AlertCircle size={15} />
+                      <p>
+                        This image scored {formatPercent(result.sceneRelevance.score)} for coastal
+                        relevance — results may not be meaningful if this isn't a shoreline photo.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="annotated-wrap">
                     <img src={previewUrl!} alt="Uploaded scene" />
                     <DetectionOverlay result={result} />
@@ -354,9 +450,11 @@ export default function Home() {
                   <details className="result-details">
                     <summary>Details ▾</summary>
                     <p>
-                      {result.modelLabel} · {result.runtime.device.toUpperCase()} · {formatDuration(result.inferenceTimeSec)} ·
-                      input {result.runtime.inputSize}px · mean confidence {formatPercent(meanConf)} ·
-                      threshold {formatPercent(result.runtime.confidenceThreshold)}
+                      {result.modelLabel} · {result.runtime.device.toUpperCase()} ·{" "}
+                      {formatDuration(result.inferenceTimeSec)} · input {result.runtime.inputSize}px ·
+                      mean {formatPercent(meanConf)} · threshold{" "}
+                      {formatPercent(result.runtime.confidenceThreshold)} · scene score{" "}
+                      {formatPercent(result.sceneRelevance.score)}
                     </p>
                   </details>
                 </div>
@@ -366,7 +464,6 @@ export default function Home() {
         </div>
       </main>
 
-      {/* ── Footer ─────────────────────────────────────────────────────── */}
       <footer>
         <div className="page-width footer-inner">
           <span>Sentinel</span>
