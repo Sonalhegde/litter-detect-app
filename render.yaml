@@ -9,7 +9,7 @@ services:
     autoDeployTrigger: commit
     envVars:
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://bluesentinel-ai.vercel.app,https://sentinalapp.vercel.app,https://litter-detect-app.vercel.com,https://sentinal-theta.vercel.app"
+        value: "https://bluesentinel-ai.vercel.app,https://sentinalapp.vercel.app,https://litter-detect-app.vercel.app,https://sentinal-theta.vercel.app"
       - key: YOLO26S_MODEL_PATH
         value: /app/models/yolo26s.onnx
       - key: YOLO26S_MODEL_SHA256
