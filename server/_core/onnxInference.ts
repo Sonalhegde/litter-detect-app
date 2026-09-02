@@ -136,7 +136,7 @@ export async function runOnnxInference(
 
   // Resize and letterbox image
   const resizedImageBuffer = await sharp(imageBuffer)
-    .resize(resizedW, resizedH, { fit: "contain" })
+    .resize(resizedW, resizedH, { fit: "fill" })
     .toBuffer();
 
   const { data: rawPixels } = await sharp({
