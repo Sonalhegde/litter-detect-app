@@ -486,7 +486,7 @@ export default function Home() {
           <span>Release {RELEASE_SHA}</span>
         </div>
         <div className="page-width footer-update">
-          LAST UPDATE - 02 Sep 2026 17:53 GST
+          LAST UPDATE - 02 Sep 2026 18:11 GST
         </div>
       </footer>
     </div>
