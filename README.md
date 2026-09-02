@@ -2,7 +2,7 @@
 
 A web tool for detecting litter in coastal photographs. Upload a shoreline image and a YOLO26s model finds litter in it, returning bounding boxes and confidence scores drawn over the image.
 
-**Live demo:** [sentinalapp.vercel.app](https://sentinalapp.vercel.app)
+**Live demo:** [sentinal-theta.vercel.app](https://sentinal-theta.vercel.app)
 
 > The inference API runs on Render's free tier and spins down after inactivity. The first request after a quiet period can take 15–30 seconds to respond.
 
@@ -45,7 +45,7 @@ The model currently has **one class: litter**. It does not distinguish debris ty
 
 The browser sends the image as a multipart POST to the FastAPI service. The service validates the bytes with Pillow, letterbox-resizes the image to 320×320 (the model's declared input size), normalises pixel values to 0–1 float32, and runs the YOLO26s ONNX artifact via ONNX Runtime. The output tensor is filtered at a 25% confidence threshold, then non-maximum suppression is applied at IoU 0.45. Surviving box coordinates are unscaled back to the original image dimensions and returned as JSON. The browser draws the boxes as an SVG layer over the local image preview — the original file is never re-fetched.
 
-For a more detailed breakdown, see the [Docs page](https://sentinalapp.vercel.app/docs) on the live site.
+For a more detailed breakdown, see the [Docs page](https://sentinal-theta.vercel.app/docs) on the live site.
 
 ---
 
@@ -105,7 +105,7 @@ cp backend/.env.example backend/.env
 | `YOLO26S_MODEL_SHA256` | *(pinned value)* | SHA-256 of the ONNX artifact; verified on startup. |
 | `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25` | Minimum confidence for a detection to be returned. |
 | `INFERENCE_IOU_THRESHOLD` | `0.45` | IoU threshold for non-maximum suppression. |
-| `MAX_UPLOAD_MB` | `4` | Maximum accepted upload size in MB. |
+| `MAX_UPLOAD_MB` | `8` | Maximum accepted upload size in MB. |
 | `RATE_LIMIT_REQUESTS` | `6` | Max requests per client per rate-limit window. |
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Duration of the rate-limit window in seconds. |
 

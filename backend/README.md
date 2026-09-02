@@ -60,7 +60,7 @@ The deployment requirements use `onnxruntime`, NumPy, and headless OpenCV rather
 | `INFERENCE_IMAGE_SIZE` | `960` locally, `320` on Render | Input-side inference resolution; lower production resolution reduces free-instance memory pressure. |
 | `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25` | Confidence floor for detections. |
 | `INFERENCE_IOU_THRESHOLD` | `0.45` | IoU setting supplied to the detector. |
-| `MAX_UPLOAD_MB` | `10` locally, `4` on Render | Maximum accepted image file size. |
+| `MAX_UPLOAD_MB` | `10` locally, `8` on Render | Maximum accepted image file size. |
 | `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT` | `6000` locally, `3000` on Render | Safe decoded-image dimension caps. |
 | `MAX_IMAGE_PIXELS` | `20000000` locally, `6000000` on Render | Safe decoded-image pixel cap. |
 | `INFERENCE_CONCURRENCY` | `1` | Maximum simultaneous model execution per instance. |
