@@ -184,9 +184,9 @@ export default function Home() {
       <header>
         <div className="page-width topbar">
           <div className="topbar-left">
-            <a className="brand" href="/" aria-label="Sentinal AI home">
+            <a className="brand" href="/" aria-label="Sentinal home">
               <span className="brand-mark"><Waves size={18} /></span>
-              Sentinal AI
+              Sentinal
             </a>
             <Link className="nav-link" href="/docs">Research notes ↗</Link>
           </div>
@@ -477,7 +477,7 @@ export default function Home() {
 
       <footer>
         <div className="page-width footer-inner">
-          <span>Sentinal AI</span>
+          <span>Sentinal</span>
           <span>
             <Link href="/docs">Docs</Link>
             {" · "}
