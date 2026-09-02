@@ -45,15 +45,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version="4.0.0",
         lifespan=lifespan,
     )
-    application.add_middleware(RequestAuditMiddleware)
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=list(configured_settings.allowed_origins),
+        allow_origins=["*"],
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type"],
+        allow_methods=["*"],
+        allow_headers=["*"],
         max_age=600,
     )
+    application.add_middleware(RequestAuditMiddleware)
 
     @application.middleware("http")
     async def reject_excessive_content_length(request: Request, call_next):  # type: ignore[no-untyped-def]

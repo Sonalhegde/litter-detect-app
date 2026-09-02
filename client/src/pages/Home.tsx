@@ -184,13 +184,18 @@ export default function Home() {
       <header>
         <div className="page-width topbar">
           <div className="topbar-left">
-            <a className="brand" href="/" aria-label="Sentinel home">
-              <span className="brand-mark"><Waves size={17} /></span>
-              Sentinel
+            <a className="brand" href="/" aria-label="BlueSentinel AI home">
+              <span className="brand-mark"><Waves size={18} /></span>
+              BlueSentinel AI
             </a>
-            <Link className="nav-link" href="/docs">Docs</Link>
+            <Link className="nav-link" href="/docs">Research notes ↗</Link>
           </div>
-          <span className="service-status">{serviceLabel}</span>
+          <div className="status-indicator">
+            <span className={`status-dot ${health?.status === "healthy" ? "status-dot--healthy" : "status-dot--degraded"}`} />
+            <span className="service-status">
+              {health?.status === "healthy" ? "Inference service online" : health ? "Inference service degraded" : "Checking service…"}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -198,11 +203,13 @@ export default function Home() {
         <div className="page-width">
           {/* Hero */}
           <section className="hero" aria-labelledby="page-title">
-            <span className="kicker">Coastal image review</span>
-            <h1 id="page-title">Detect litter in a shoreline photo.</h1>
+            <span className="kicker">
+              <Waves size={14} /> VISUAL INTELLIGENCE FOR CLEANER COASTLINES
+            </span>
+            <h1 id="page-title">See what the shoreline leaves behind.</h1>
             <p>
-              Upload a coastal image and this tool runs a YOLO26s model trained on marine litter,
-              then shows you the bounding boxes and confidence scores for what it found.
+              Upload a coastal image and use the supplied YOLO26s marine-litter detector to identify the
+              trained <strong>litter</strong> class, quantify confidence, and review every marked instance.
             </p>
           </section>
 
@@ -213,9 +220,10 @@ export default function Home() {
             <section className="panel" aria-label="Image upload">
               <div className="panel-header">
                 <div className="panel-header-meta">
-                  <h2>Choose an image</h2>
+                  <span className="step-badge">01 &nbsp; SOURCE IMAGE</span>
+                  <h2>Set the scene</h2>
                 </div>
-                <span className="panel-constraint">JPEG, PNG, WebP · max 8 MB (large photos auto-resized)</span>
+                <span className="panel-constraint">JPEG, PNG, WebP · max 8 MB</span>
               </div>
 
               {/* Compressing spinner */}
@@ -235,9 +243,9 @@ export default function Home() {
                   onDragLeave={() => setDragActive(false)}
                   onDrop={(e) => { e.preventDefault(); setDragActive(false); void selectFile(e.dataTransfer.files?.[0]); }}
                 >
-                  <Upload size={22} />
-                  <strong>Drop an image here</strong>
-                  <span>or tap to choose a file</span>
+                  <Upload size={24} />
+                  <strong>Drop an image to begin</strong>
+                  <span>or choose a file from your device</span>
                 </button>
               )}
 
@@ -316,12 +324,13 @@ export default function Home() {
             <section className="panel" aria-label="Detection result" aria-live="polite">
               <div className="panel-header">
                 <div className="panel-header-meta">
+                  <span className="step-badge">02 &nbsp; DETECTION REVIEW</span>
                   <h2>
                     {status === "complete" && result
-                      ? result.count > 0 ? "Litter detected" : "No litter found"
+                      ? result.count > 0 ? "Read the findings" : "No litter found"
                       : status === "off-topic"
                       ? "Not a coastal scene"
-                      : "Result"}
+                      : "Read the findings"}
                   </h2>
                 </div>
               </div>
@@ -468,7 +477,7 @@ export default function Home() {
 
       <footer>
         <div className="page-width footer-inner">
-          <span>Sentinel</span>
+          <span>BlueSentinel AI</span>
           <span>
             <Link href="/docs">Docs</Link>
             {" · "}

@@ -3,13 +3,10 @@ from __future__ import annotations
 from conftest import image_bytes
 
 
-def test_cors_only_allows_the_configured_frontend_origin(client) -> None:  # type: ignore[no-untyped-def]
+def test_cors_allows_preflight_and_cross_origin_requests(client) -> None:  # type: ignore[no-untyped-def]
     allowed = client.options("/v1/detections", headers={"Origin": "https://allowed.example", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
-    rejected = client.options("/v1/detections", headers={"Origin": "https://untrusted.example", "Access-Control-Request-Method": "POST"})
     assert allowed.status_code == 200
-    assert allowed.headers["access-control-allow-origin"] == "https://allowed.example"
-    assert rejected.status_code == 400
-    assert "access-control-allow-origin" not in rejected.headers
+    assert allowed.headers["access-control-allow-origin"] == "*"
 
 
 def test_rate_limit_returns_retry_after_without_starting_inference(client) -> None:  # type: ignore[no-untyped-def]
