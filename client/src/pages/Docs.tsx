@@ -46,7 +46,7 @@ function SectionContent({ id, classes }: { id: SectionId; classes: string[] }) {
         <div className="docs-section-body">
           <h3>Overview</h3>
           <p>
-            Sentinel is a web tool for reviewing coastal photographs. Upload a JPEG, PNG, or WebP
+            Sentinal is a web tool for reviewing coastal photographs. Upload a JPEG, PNG, or WebP
             image and the service runs a YOLO26s model trained on marine litter imagery, then shows
             you each detected object as a bounding box with its confidence score.
           </p>
@@ -331,9 +331,9 @@ export default function Docs() {
       <header>
         <div className="page-width topbar">
           <div className="topbar-left">
-            <a className="brand" href="/" aria-label="Sentinel home">
+            <a className="brand" href="/" aria-label="Sentinal home">
               <span className="brand-mark"><Waves size={17} /></span>
-              Sentinel
+              Sentinal
             </a>
             <Link className="nav-link nav-link--active" href="/docs">Docs</Link>
           </div>
@@ -346,7 +346,7 @@ export default function Docs() {
           <div className="docs-page-header">
             <h1>Documentation</h1>
             <p>
-              Plain-language notes about what Sentinel does, how the detection pipeline works,
+              Plain-language notes about what Sentinal does, how the detection pipeline works,
               what model and data are used, the API, and its limits.
             </p>
           </div>
@@ -381,7 +381,7 @@ export default function Docs() {
       {/* ── Footer ─────────────────────────────────────────────────────── */}
       <footer>
         <div className="page-width footer-inner">
-          <span>Sentinel</span>
+          <span>Sentinal</span>
           <span>
             <Link href="/">Detector</Link>
             {" · "}
