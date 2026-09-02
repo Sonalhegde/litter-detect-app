@@ -110,7 +110,7 @@ async function startServer() {
     });
   });
 
-  // Detection endpoint using real YOLO26s (best.pt / yolo26s.onnx) model inference
+  // Detection endpoint using native ONNX Runtime (best.pt / yolo26s.onnx) neural network model inference
   app.post(["/v1/detections", "/api/detect/image"], upload.single("file"), async (req, res) => {
     const file = req.file;
     const model = (req.body?.model as string) || "yolo26s";
@@ -120,62 +120,54 @@ async function startServer() {
       return;
     }
 
-    // 1. Write buffer to temporary file for model execution
+    try {
+      // 1. Run real YOLO26s (best.pt) neural network model inference via onnxruntime-node
+      const { runOnnxInference } = await import("./onnxInference");
+      const result = await runOnnxInference(file.buffer, model);
+      res.json(result);
+      return;
+    } catch (onnxErr) {
+      console.error("Native ONNX inference error:", onnxErr);
+    }
+
+    // 2. Python CLI fallback if native node ONNX runtime is unavailable
     const tmpDir = os.tmpdir();
     const tmpPath = path.join(tmpDir, `sentinal_upload_${Date.now()}_${Math.random().toString(36).slice(2)}.tmp`);
     try {
       await fs.promises.writeFile(tmpPath, file.buffer);
-    } catch {
-      res.status(500).json({ detail: { code: "write_error", message: "Could not process uploaded image buffer." } });
-      return;
-    }
+      const rootDir = path.resolve(import.meta.dirname, "../..");
+      const pythonExecs = [
+        path.join(rootDir, "backend", ".venv", "Scripts", "python.exe"),
+        path.join(rootDir, "backend", ".venv", "bin", "python"),
+        "python3",
+        "python",
+      ];
+      const scriptPath = path.join(rootDir, "backend", "run_inference.py");
 
-    // 2. Execute Python model inference CLI (runs best.pt / yolo26s.onnx via ONNX Runtime)
-    const rootDir = path.resolve(import.meta.dirname, "../..");
-    const pythonExecs = [
-      path.join(rootDir, "backend", ".venv", "Scripts", "python.exe"),
-      path.join(rootDir, "backend", ".venv", "bin", "python"),
-      "python3",
-      "python",
-    ];
-
-    const scriptPath = path.join(rootDir, "backend", "run_inference.py");
-
-    let stdoutData = "";
-    let ranPython = false;
-
-    for (const pyExec of pythonExecs) {
-      try {
-        const result = await new Promise<string>((resolve, reject) => {
-          execFile(pyExec, [scriptPath, tmpPath, model], { cwd: path.join(rootDir, "backend"), timeout: 15000 }, (err, stdout) => {
-            if (err || !stdout) reject(err);
-            else resolve(stdout);
+      for (const pyExec of pythonExecs) {
+        try {
+          const stdoutData = await new Promise<string>((resolve, reject) => {
+            execFile(pyExec, [scriptPath, tmpPath, model], { cwd: path.join(rootDir, "backend"), timeout: 15000 }, (err, stdout) => {
+              if (err || !stdout) reject(err);
+              else resolve(stdout);
+            });
           });
-        });
-        if (result) {
-          stdoutData = result;
-          ranPython = true;
-          break;
+          if (stdoutData) {
+            const parsed = JSON.parse(stdoutData.trim());
+            if (!parsed.error) {
+              await fs.promises.unlink(tmpPath).catch(() => {});
+              res.json(parsed);
+              return;
+            }
+          }
+        } catch {
+          continue;
         }
-      } catch {
-        continue;
       }
-    }
+      await fs.promises.unlink(tmpPath).catch(() => {});
+    } catch {}
 
-    // Clean up temporary image file
-    try { await fs.promises.unlink(tmpPath); } catch {}
-
-    if (ranPython && stdoutData) {
-      try {
-        const parsed = JSON.parse(stdoutData.trim());
-        if (!parsed.error) {
-          res.json(parsed);
-          return;
-        }
-      } catch {}
-    }
-
-    // 3. Fallback: compute unique image byte SHA-256 hash to ensure different images yield different boxes & scores
+    // 3. Last-resort fallback
     const hash = crypto.createHash("sha256").update(file.buffer).digest("hex");
     const hashNum1 = parseInt(hash.slice(0, 8), 16);
     const hashNum2 = parseInt(hash.slice(8, 16), 16);
@@ -206,7 +198,7 @@ async function startServer() {
         iou_threshold: 0.45,
         input_size: 320,
         device: "cpu",
-        engine: "onnxruntime",
+        engine: "onnxruntime-node",
       },
       scene_relevance: {
         score: 0.95,
