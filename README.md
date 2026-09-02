@@ -1,4 +1,4 @@
-# Sentinel
+# Sentinal
 
 A web tool for detecting litter in coastal photographs. Upload a shoreline image and a YOLO26s model finds litter in it, returning bounding boxes and confidence scores drawn over the image.
 
@@ -10,7 +10,7 @@ A web tool for detecting litter in coastal photographs. Upload a shoreline image
 
 ## Screenshot
 
-![Sentinel — detection result showing bounding boxes over a coastal image](docs/screenshot.png)
+![Sentinal — marine litter detection platform](docs/screenshot.png)
 
 *(Upload panel on the left, annotated result on the right. Boxes and confidence scores are drawn as an SVG overlay on your local image preview.)*
 

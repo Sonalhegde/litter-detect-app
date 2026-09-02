@@ -40,7 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
 
     application = FastAPI(
-        title="Sentinel Inference API",
+        title="Sentinal Inference API",
         description="Trusted YOLO26s marine-litter inference with defensive upload validation and adaptive confidence thresholding.",
         version="4.0.0",
         lifespan=lifespan,
