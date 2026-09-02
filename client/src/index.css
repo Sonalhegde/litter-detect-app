@@ -2,16 +2,16 @@
 
 /* ─── Tokens ──────────────────────────────────────────────────────────────── */
 :root {
-  --bg:          #f7f8f6;
+  --bg:          #f7f9f7;
   --surface:     #ffffff;
-  --border:      #e2e8e4;
-  --border-soft: #edf1ee;
+  --border:      #e2ece5;
+  --border-soft: #edf4ee;
   --text:        #1a2420;
   --text-2:      #4a5e57;
   --text-3:      #7a8f88;
-  --accent:      #2d6a5d;
-  --accent-dark: #215048;
-  --accent-bg:   #eef6f2;
+  --accent:      #2563eb;
+  --accent-dark: #1d4ed8;
+  --accent-bg:   #eff6ff;
   --error-text:  #8d3c32;
   --error-border:#edc7c1;
   --error-bg:    #fff7f5;
@@ -23,16 +23,24 @@
   --font-mono:   ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
-/* Multi-class detection colour palette — 8 distinguishable colours */
+/* Multi-class detection colour palette — 16 distinguishable colours */
 :root {
-  --cls-0: #2d6a5d;   /* litter / default — accent green */
+  --cls-0: #2563eb;   /* primary detection box - matches accent */
   --cls-1: #c0570a;   /* rust orange */
   --cls-2: #6b3fa0;   /* violet */
-  --cls-3: #1a6ea8;   /* ocean blue */
+  --cls-3: #1e40af;   /* deep indigo for contrast */
   --cls-4: #a0832d;   /* sand gold */
   --cls-5: #c0285a;   /* coral red */
-  --cls-6: #2d8a7a;   /* teal */
+  --cls-6: #0d9488;   /* deep teal */
   --cls-7: #595959;   /* neutral grey */
+  --cls-8: #059669;   /* emerald */
+  --cls-9: #d97706;   /* amber */
+  --cls-10: #7c3aed;  /* purple */
+  --cls-11: #0284c7;  /* sky blue */
+  --cls-12: #db2777;  /* pink */
+  --cls-13: #4d7c0f;  /* lime dark */
+  --cls-14: #ea580c;  /* orange-red */
+  --cls-15: #475569;  /* slate */
 }
 
 /* ─── Reset & base ────────────────────────────────────────────────────────── */

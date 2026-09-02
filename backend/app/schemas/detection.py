@@ -30,7 +30,13 @@ class ImageSize(BaseModel):
 
 
 class RuntimeConfiguration(BaseModel):
-    confidence_threshold: float
+    confidence_threshold: float = Field(
+        description="The default or class-0 confidence threshold.",
+    )
+    per_class_thresholds: dict[str, float] = Field(
+        default_factory=dict,
+        description="Effective confidence threshold for each distinct class in the model's class map.",
+    )
     iou_threshold: float
     input_size: int
     device: Literal["cpu", "cuda", "mps", "unknown"]

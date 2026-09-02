@@ -67,3 +67,28 @@ The deployment requirements use `onnxruntime`, NumPy, and headless OpenCV rather
 | `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` | `6`, `60` | Per-instance public-demo request budget. |
 
 Successful detection responses include `runtime.engine: "onnxruntime"` and `runtime.device: "cpu"` so clients can distinguish the deployed engine from model-family availability.
+
+## Checksum-Pinning & Model Replacement Workflow
+
+The backend SHA-256 checksum-pins the deployed `yolo26s.onnx` artifact to ensure integrity before loading model tensors into memory.
+
+When replacing or updating the `yolo26s` checkpoint with a new model (e.g., a fine-tuned multi-class checkpoint):
+
+1. **Compute SHA-256 Digest**:
+   Compute the SHA-256 checksum of the new `.onnx` file:
+   ```bash
+   sha256sum models/yolo26s.onnx
+   # or in PowerShell:
+   Get-FileHash models/yolo26s.onnx -Algorithm SHA256
+   ```
+
+2. **Update Configuration Pins**:
+   - Update `DEFAULT_TRUSTED_YOLO26S_SHA256` in `backend/app/config.py`.
+   - Update `YOLO26S_MODEL_SHA256` in `render.yaml` (and set the corresponding environment variable in the Render dashboard).
+
+3. **Verify Model Status**:
+   Start the service locally and verify that `GET /models` reports `yolo26s` as `available: true` with your new class names in `classes`.
+
+> **Note on other model variants (`yolo26n`, `yolo26m`, `yolo26l`, `yolo26x`)**:
+> Currently, `yolo26s` is the primary checksum-pinned production model. Once genuine fine-tuned checkpoints are supplied for `yolo26n/m/l/x`, they should receive identical SHA-256 checksum-pinning fields in `config.py` and `render.yaml` (`YOLO26N_MODEL_SHA256`, etc.) and be verified in `ModelRegistry._trusted_yolo26s_present()` before loading.
+

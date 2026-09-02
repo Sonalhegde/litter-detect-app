@@ -35,11 +35,57 @@ class SlidingWindowRateLimiter:
             return None
 
 
-def client_identifier(request: Request) -> str:
-    """Use the connection peer; forwarded headers are client-spoofable without trusted-proxy configuration."""
-    candidate = request.client.host if request.client else ""
+KNOWN_TRUSTED_PROXIES = {
+    "127.0.0.1",
+    "::1",
+}
+
+
+def _is_private_ip(ip_str: str) -> bool:
     try:
-        return str(ipaddress.ip_address(candidate))
+        ip = ipaddress.ip_address(ip_str)
+        return ip.is_loopback or ip.is_private
+    except ValueError:
+        return False
+
+
+def client_identifier(request: Request, trust_proxy_headers: bool | None = None) -> str:
+    """
+    Safely resolve client IP.
+    When running behind a trusted reverse proxy (e.g. Render), extract the client IP
+    from X-Forwarded-For or X-Real-IP. Spoofed headers on untrusted direct connections are ignored.
+    """
+    direct_peer = request.client.host if request.client else ""
+
+    if trust_proxy_headers is None:
+        settings = getattr(request.app.state, "settings", None)
+        if settings is not None:
+            trust_proxy_headers = getattr(settings, "trust_proxy_headers", False)
+        else:
+            trust_proxy_headers = False
+
+    # Trust forwarded headers if trust_proxy_headers is configured OR direct peer is a trusted/private proxy
+    is_trusted = trust_proxy_headers or direct_peer in KNOWN_TRUSTED_PROXIES or _is_private_ip(direct_peer)
+
+    if is_trusted:
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            client_candidate = forwarded_for.split(",")[0].strip()
+            try:
+                return str(ipaddress.ip_address(client_candidate))
+            except ValueError:
+                pass
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip:
+            try:
+                return str(ipaddress.ip_address(real_ip.strip()))
+            except ValueError:
+                pass
+
+    try:
+        return str(ipaddress.ip_address(direct_peer))
     except ValueError:
         pass
+
     return "unknown"
+

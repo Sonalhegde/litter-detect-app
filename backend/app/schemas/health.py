@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ModelStatus(BaseModel):
@@ -10,6 +10,7 @@ class ModelStatus(BaseModel):
     label: str
     available: bool
     detail: str
+    classes: list[str] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):

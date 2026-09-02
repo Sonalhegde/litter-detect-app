@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BookOpen,
   Code2,
@@ -10,7 +10,7 @@ import {
   Database,
 } from "lucide-react";
 import { Link } from "wouter";
-import { API_BASE_URL } from "@/lib/detection";
+import { API_BASE_URL, getHealth } from "@/lib/detection";
 
 const RELEASE_SHA = __RELEASE_SHA__;
 
@@ -35,7 +35,10 @@ const SECTIONS: Section[] = [
   { id: "credits",      label: "Credits",       icon: UserRound  },
 ];
 
-function SectionContent({ id }: { id: SectionId }) {
+function SectionContent({ id, classes }: { id: SectionId; classes: string[] }) {
+  const classText = classes.length > 0 ? classes.join(", ") : "litter";
+  const isMulti = classes.length > 1;
+
   switch (id) {
 
     case "overview":
@@ -54,10 +57,8 @@ function SectionContent({ id }: { id: SectionId }) {
             scientifically validated measurements.
           </p>
           <p>
-            The current model is a single-class detector — it finds "litter" as one category and
-            does not distinguish between plastic bottles, fishing nets, packaging, or other debris
-            types. A multi-class model trained on the BePLi v2 dataset is in progress; this
-            documentation will be updated when it ships.
+            The active detection model supports candidate classification across {isMulti ? `${classes.length} distinct classes (${classText})` : `the "${classText}" category`}.
+            The pipeline is fully multi-class ready and applies per-class NMS and adaptive confidence thresholding.
           </p>
         </div>
       );
@@ -81,7 +82,7 @@ function SectionContent({ id }: { id: SectionId }) {
           </p>
           <p>
             The model's output tensor contains candidate bounding boxes and class confidence scores.
-            The service filters these at a 25% confidence threshold, runs non-maximum suppression at
+            The service filters these at low candidate confidence, runs per-class non-maximum suppression at
             an IoU threshold of 0.45, and unscales the surviving box coordinates back to the
             dimensions of your original image. The resulting detections are serialised to JSON and
             returned to the browser.
@@ -100,7 +101,7 @@ function SectionContent({ id }: { id: SectionId }) {
           <h3>Model</h3>
           <p>
             The deployed model is a custom-trained YOLO26s checkpoint fine-tuned to detect{" "}
-            <strong>litter</strong> in coastal and marine photographs. YOLO26s is part of the
+            <strong>{classText}</strong> in coastal and marine photographs. YOLO26s is part of the
             Ultralytics YOLO26 family, a one-stage object detector with a lighter detection head,
             DFL-free box regression, and an end-to-end (NMS-free) inference path. At 9.5M fused
             parameters it runs on CPU within Render's free-tier memory constraints.
@@ -112,9 +113,7 @@ function SectionContent({ id }: { id: SectionId }) {
             peak memory. The artifact is SHA-256 pinned and verified on load.
           </p>
           <p>
-            The model currently has one trained class: <strong>litter</strong>. It does not
-            distinguish debris type. A multi-class model trained on the BePLi v2 dataset is in
-            development and will replace this checkpoint when it is ready.
+            Active detection classes: <strong>{classText}</strong>.
           </p>
           <p>
             YOLO26n, m, l, and x variants are not deployed — no fine-tuned checkpoints for those
@@ -128,7 +127,7 @@ function SectionContent({ id }: { id: SectionId }) {
         <div className="docs-section-body">
           <h3>Dataset</h3>
           <p>
-            The current single-class model was trained on a marine litter dataset in COCO format.
+            The current model was trained on a marine litter dataset in COCO format.
             The exact dataset source was not included with the supplied checkpoint, so a specific
             attribution cannot be confirmed. Based on the image filenames and class structure in
             the supplied archive, it appears to be a COCO-derived coastal litter dataset.
@@ -166,12 +165,17 @@ function SectionContent({ id }: { id: SectionId }) {
 
           <p><strong>Service status</strong></p>
           <pre><code>{`GET /health`}</code></pre>
-          <p>Returns service status and model availability. Example response:</p>
+          <p>Returns service status, model availability, and class names. Example response:</p>
           <pre><code>{`{
   "status": "healthy",
   "models": [
-    { "id": "yolo26s", "label": "YOLO26s", "available": true,
-      "detail": "Trusted derived ONNX artifact from the supplied YOLO26s checkpoint." }
+    {
+      "id": "yolo26s",
+      "label": "YOLO26s",
+      "available": true,
+      "classes": ["plastic_bottle", "fishing_net"],
+      "detail": "Trusted derived ONNX artifact from the supplied YOLO26s checkpoint."
+    }
   ]
 }`}</code></pre>
 
@@ -194,16 +198,24 @@ model  — model ID (optional; default: yolo26s)`}</code></pre>
   "detections": [
     {
       "id": 1,
-      "class_name": "litter",
+      "class_name": "plastic_bottle",
       "confidence": 0.812,
       "bbox": { "x1": 142.3, "y1": 88.1, "x2": 298.7, "y2": 201.5 }
+    },
+    {
+      "id": 2,
+      "class_name": "fishing_net",
+      "confidence": 0.745,
+      "bbox": { "x1": 310.0, "y1": 150.2, "x2": 450.6, "y2": 290.0 }
     }
   ],
   "image_size": { "width": 1280, "height": 720 },
   "inference_time_sec": 0.52,
   "runtime": {
     "input_size": 320, "device": "cpu", "engine": "onnxruntime",
-    "confidence_threshold": 0.25, "iou_threshold": 0.45
+    "confidence_threshold": 0.25,
+    "per_class_thresholds": { "plastic_bottle": 0.25, "fishing_net": 0.25 },
+    "iou_threshold": 0.45
   }
 }`}</code></pre>
 
@@ -229,11 +241,6 @@ model  — model ID (optional; default: yolo26s)`}</code></pre>
         <div className="docs-section-body">
           <h3>Limitations</h3>
           <p>
-            The current model is a single-class detector. It identifies the presence of "litter"
-            as a category — it does not tell you what type of debris it found, how much there is
-            by weight or volume, or whether a scene should be classified as "polluted" or "clean."
-          </p>
-          <p>
             Detection accuracy depends on lighting, camera angle, distance from the subject,
             occlusion by sand, water, or other objects, image compression quality, and how closely
             the image resembles the training data. Litter that is partially submerged, very small,
@@ -241,13 +248,8 @@ model  — model ID (optional; default: yolo26s)`}</code></pre>
           </p>
           <p>
             A result of zero detections means no object exceeded the configured confidence
-            threshold (25%). It does not prove the image contains no litter — the model may have
+            threshold. It does not prove the image contains no litter — the model may have
             assigned a lower confidence to items it was uncertain about.
-          </p>
-          <p>
-            Once the multi-class model ships, per-class accuracy will vary because the BePLi v2
-            training data is imbalanced — some litter types appear far more often than others.
-            Common categories will generally detect more reliably than rare ones.
           </p>
           <p>
             This tool has not been validated for scientific research, environmental monitoring,
@@ -310,6 +312,18 @@ model  — model ID (optional; default: yolo26s)`}</code></pre>
 
 export default function Docs() {
   const [active, setActive] = useState<SectionId>("overview");
+  const [classes, setClasses] = useState<string[]>([]);
+
+  useEffect(() => {
+    getHealth()
+      .then((h) => {
+        const yolo26s = h.models.find((m) => m.id === "yolo26s");
+        if (yolo26s?.classes && yolo26s.classes.length > 0) {
+          setClasses(yolo26s.classes);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="app-shell">
@@ -358,7 +372,7 @@ export default function Docs() {
 
             {/* Content */}
             <article aria-live="polite">
-              <SectionContent id={active} />
+              <SectionContent id={active} classes={classes} />
             </article>
           </div>
         </div>

@@ -22,6 +22,8 @@ const RELEASE_SHA = __RELEASE_SHA__;
 const CLASS_COLORS = [
   "var(--cls-0)", "var(--cls-1)", "var(--cls-2)", "var(--cls-3)",
   "var(--cls-4)", "var(--cls-5)", "var(--cls-6)", "var(--cls-7)",
+  "var(--cls-8)", "var(--cls-9)", "var(--cls-10)", "var(--cls-11)",
+  "var(--cls-12)", "var(--cls-13)", "var(--cls-14)", "var(--cls-15)",
 ];
 function classColor(className: string, index: number) {
   let h = 0;
@@ -31,7 +33,7 @@ function classColor(className: string, index: number) {
 }
 
 function DetectionOverlay({ result }: { result: DetectionResponse }) {
-  const classNames = [...new Set(result.detections.map((d) => d.className))];
+  const classNames = Array.from(new Set(result.detections.map((d) => d.className)));
   const colorMap = Object.fromEntries(classNames.map((c, i) => [c, classColor(c, i)]));
   return (
     <svg
@@ -105,7 +107,7 @@ export default function Home() {
       wasResized = result.resized;
       if (wasResized && result.resized) {
         const fromMb = (result.originalSize / 1024 / 1024).toFixed(1);
-        setResizeNotice(`Image resized from ${fromMb} MB to fit the 4 MB upload limit.`);
+        setResizeNotice(`Image resized from ${fromMb} MB to fit the 8 MB upload limit.`);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -170,7 +172,7 @@ export default function Home() {
     health ? "Inference service needs attention" :
     "Checking inference service…";
 
-  const classNames = result ? [...new Set(result.detections.map((d) => d.className))] : [];
+  const classNames = result ? Array.from(new Set(result.detections.map((d) => d.className))) : [];
   const colorMap = Object.fromEntries(classNames.map((c, i) => [c, classColor(c, i)]));
 
   // Soft-warn: scene checker said "warn" but detection ran anyway
@@ -213,7 +215,7 @@ export default function Home() {
                 <div className="panel-header-meta">
                   <h2>Choose an image</h2>
                 </div>
-                <span className="panel-constraint">JPEG, PNG, WebP · large photos auto-resized</span>
+                <span className="panel-constraint">JPEG, PNG, WebP · max 8 MB (large photos auto-resized)</span>
               </div>
 
               {/* Compressing spinner */}
@@ -300,7 +302,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => void runDetection(false)}
-                      disabled={status === "scanning"}
+                      disabled={(status as string) === "scanning"}
                       aria-label="Retry detection"
                     >
                       Retry

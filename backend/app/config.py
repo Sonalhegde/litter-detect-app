@@ -11,7 +11,9 @@ DEFAULT_TRUSTED_YOLO26S_SHA256 = "969bbf4733dd1486478e55cbb511569dc0bb7a75cf8895
 DEFAULT_ALLOWED_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://bluesentinel-ai.vercel.app",
     "https://sentinalapp.vercel.app",
+    "https://litter-detect-app.vercel.app",
 )
 
 
@@ -67,6 +69,7 @@ class Settings:
     inference_concurrency: int
     rate_limit_requests: int
     rate_limit_window_seconds: int
+    trust_proxy_headers: bool
 
     @property
     def max_upload_bytes(self) -> int:
@@ -79,6 +82,12 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    trust_proxy_raw = os.getenv("TRUST_PROXY_HEADERS")
+    trust_proxy = (
+        trust_proxy_raw.lower() in ("true", "1", "yes")
+        if trust_proxy_raw is not None
+        else (os.getenv("RENDER") is not None or os.getenv("RENDER_SERVICE_ID") is not None)
+    )
     return Settings(
         allowed_origins=parse_origins(os.getenv("CORS_ALLOWED_ORIGINS")),
         yolo26s_model_path=Path(os.getenv("YOLO26S_MODEL_PATH", MODEL_DIR / "yolo26s.onnx")),
@@ -97,4 +106,5 @@ def load_settings() -> Settings:
         inference_concurrency=get_int_env("INFERENCE_CONCURRENCY", 1, 1, 2),
         rate_limit_requests=get_int_env("RATE_LIMIT_REQUESTS", 6, 1, 60),
         rate_limit_window_seconds=get_int_env("RATE_LIMIT_WINDOW_SECONDS", 60, 10, 3600),
+        trust_proxy_headers=trust_proxy,
     )

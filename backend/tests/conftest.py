@@ -9,7 +9,7 @@ from PIL import Image
 
 from app.config import load_settings
 from app.main import create_app
-from app.schemas.detection import DetectionResponse, ImageSize, RuntimeConfiguration
+from app.schemas.detection import DetectionResponse, ImageSize, RuntimeConfiguration, SceneRelevance
 
 
 def image_bytes(image_format: str = "PNG", size: tuple[int, int] = (64, 48)) -> bytes:
@@ -28,7 +28,15 @@ class FakeInferenceService:
             count=0,
             inference_time_sec=0.01,
             image_size=ImageSize(width=image.width, height=image.height),
-            runtime=RuntimeConfiguration(confidence_threshold=0.25, iou_threshold=0.45, input_size=320, device="cpu", engine="onnxruntime"),
+            runtime=RuntimeConfiguration(
+                confidence_threshold=0.25,
+                per_class_thresholds={"litter": 0.25},
+                iou_threshold=0.45,
+                input_size=320,
+                device="cpu",
+                engine="onnxruntime",
+            ),
+            scene_relevance=SceneRelevance(score=1.0, verdict="pass", checker_available=False),
         )
 
 

@@ -23,6 +23,7 @@ export type DetectionResponse = {
   summary: Array<{ className: string; count: number }>;
   runtime: {
     confidenceThreshold: number;
+    perClassThresholds?: Record<string, number>;
     iouThreshold: number;
     inputSize: number;
     device: "cpu" | "cuda" | "mps" | "unknown";
@@ -35,6 +36,7 @@ export type ModelHealth = {
   label: string;
   available: boolean;
   detail?: string;
+  classes?: string[];
 };
 
 export type HealthResponse = {
@@ -42,15 +44,28 @@ export type HealthResponse = {
   models: ModelHealth[];
 };
 
+export type ErrorCategory =
+  | "cors_or_network"
+  | "timeout"
+  | "rate_limited"
+  | "too_large"
+  | "server_error"
+  | "unknown";
+
 export class DetectionApiError extends Error {
   readonly code?: string;
   readonly status?: number;
+  readonly category: ErrorCategory;
 
-  constructor(message: string, options: { code?: string; status?: number } = {}) {
+  constructor(
+    message: string,
+    options: { code?: string; status?: number; category?: ErrorCategory } = {}
+  ) {
     super(message);
     this.name = "DetectionApiError";
     this.code = options.code;
     this.status = options.status;
+    this.category = options.category ?? "unknown";
   }
 }
 
@@ -81,7 +96,7 @@ export function formatDuration(seconds: number) {
 }
 
 // ── Image compression (client-side) ───────────────────────────────────────────
-const UPLOAD_TARGET_BYTES = 4 * 1024 * 1024;   // 4 MB target
+const UPLOAD_TARGET_BYTES = 8 * 1024 * 1024;   // 8 MB target
 const UPLOAD_HARD_LIMIT   = 35 * 1024 * 1024;  // 35 MB hard ceiling (wrong file)
 const COMPRESS_QUALITY    = 0.85;               // first-pass JPEG/WebP quality
 
@@ -92,8 +107,8 @@ export type CompressResult =
 /**
  * If the file is already within the upload target, return it unchanged.
  * If it exceeds the hard limit, throw — that's not a normal photo.
- * Otherwise canvas-resize + re-encode to JPEG at 85% quality, halving
- * dimensions iteratively until it fits.
+ * Otherwise canvas-resize + re-encode to WebP/JPEG at 85% quality,
+ * reducing dimensions while maintaining a minimum resolution floor (640px).
  */
 export async function prepareImageForUpload(raw: File): Promise<CompressResult> {
   if (raw.size <= UPLOAD_TARGET_BYTES) return { file: raw, resized: false };
@@ -107,9 +122,18 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
   const bitmap = await createImageBitmap(raw);
   let { width, height } = bitmap;
 
-  // Iteratively halve dimensions until encoded size is under the target.
-  // In practice one pass is almost always enough for phone photos.
   let blob: Blob | null = null;
+  let mimeType = "image/webp";
+
+  // Check if browser supports canvas.toBlob with image/webp
+  const testCanvas = document.createElement("canvas");
+  testCanvas.width = 1;
+  testCanvas.height = 1;
+  const supportsWebP = await new Promise<boolean>((res) =>
+    testCanvas.toBlob((b) => res(!!b && b.type === "image/webp"), "image/webp")
+  );
+  if (!supportsWebP) mimeType = "image/jpeg";
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -117,12 +141,12 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
     const ctx = canvas.getContext("2d")!;
     ctx.drawImage(bitmap, 0, 0, width, height);
     blob = await new Promise<Blob | null>((res) =>
-      canvas.toBlob(res, "image/jpeg", COMPRESS_QUALITY)
+      canvas.toBlob(res, mimeType, COMPRESS_QUALITY)
     );
     if (blob && blob.size <= UPLOAD_TARGET_BYTES) break;
-    // Reduce by ~30% each pass to avoid excessive iteration
-    width  = Math.max(320, Math.round(width  * 0.7));
-    height = Math.max(320, Math.round(height * 0.7));
+    // Reduce by ~30% each pass while keeping a minimum resolution floor of 640px
+    width  = Math.max(640, Math.round(width  * 0.7));
+    height = Math.max(640, Math.round(height * 0.7));
     blob = null;
   }
 
@@ -130,12 +154,13 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
 
   if (!blob || blob.size > UPLOAD_TARGET_BYTES) {
     throw new Error(
-      "Could not compress this image to under 4 MB. Try a smaller or less complex image."
+      "Could not compress this image to under 8 MB. Try a smaller or less complex image."
     );
   }
 
   const baseName = raw.name.replace(/\.[^.]+$/, "") || "image";
-  const compressed = new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
+  const ext = mimeType === "image/webp" ? "webp" : "jpg";
+  const compressed = new File([blob], `${baseName}.${ext}`, { type: mimeType });
   return { file: compressed, resized: true, originalSize };
 }
 
@@ -160,6 +185,8 @@ function toCamelResponse(raw: Record<string, unknown>): DetectionResponse {
   const rawScene = (raw.scene_relevance || {}) as Record<string, unknown>;
   const rawVerdict = String(rawScene.verdict ?? "pass");
 
+  const rawPerClass = (rawRuntime.per_class_thresholds || {}) as Record<string, number>;
+
   return {
     model: raw.model as ModelId,
     modelLabel: String(raw.model_label ?? raw.model ?? "YOLO"),
@@ -178,6 +205,7 @@ function toCamelResponse(raw: Record<string, unknown>): DetectionResponse {
       : [],
     runtime: {
       confidenceThreshold: Number(rawRuntime.confidence_threshold ?? 0.25),
+      perClassThresholds: rawPerClass,
       iouThreshold: Number(rawRuntime.iou_threshold ?? 0.45),
       inputSize: Number(rawRuntime.input_size ?? 0),
       device: (["cpu", "cuda", "mps", "unknown"] as const).includes(
@@ -197,23 +225,27 @@ function toCamelResponse(raw: Record<string, unknown>): DetectionResponse {
 }
 
 async function parseError(response: Response): Promise<DetectionApiError> {
-  const fallback = `The detection service returned ${response.status}.`;
+  const status = response.status;
+  let category: ErrorCategory = "unknown";
+  if (status === 429) category = "rate_limited";
+  else if (status === 413) category = "too_large";
+  else if (status >= 500) category = "server_error";
+
+  let defaultMsg = `The detection service returned HTTP ${status}.`;
+  if (status === 429) defaultMsg = "Too many requests. Please wait a minute before trying again.";
+  else if (status === 413) defaultMsg = "The image file is too large for the backend limit (8 MB). Please choose a smaller file.";
+  else if (status >= 500) defaultMsg = `The detection service returned server error (${status}). The service may be restarting or out of memory.`;
+
   try {
     const body = (await response.json()) as {
       detail?: string | { message?: string; code?: string };
       error?: { message?: string; code?: string };
     };
-    if (typeof body.detail === "string")
-      return new DetectionApiError(body.detail, { status: response.status });
-    return new DetectionApiError(
-      body.error?.message || (body.detail as { message?: string })?.message || fallback,
-      {
-        code: body.error?.code || (body.detail as { code?: string })?.code,
-        status: response.status,
-      }
-    );
+    const msg = typeof body.detail === "string" ? body.detail : (body.error?.message || (body.detail as { message?: string })?.message || defaultMsg);
+    const code = body.error?.code || (typeof body.detail === "object" ? body.detail?.code : undefined);
+    return new DetectionApiError(msg, { code, status, category });
   } catch {
-    return new DetectionApiError(fallback, { status: response.status });
+    return new DetectionApiError(defaultMsg, { status, category });
   }
 }
 
@@ -232,7 +264,8 @@ async function fetchWithTimeout(
   } catch (error) {
     if (controller.signal.aborted && !externalSignal?.aborted) {
       throw new DetectionApiError(
-        "The detection service took too long to respond. Please try again."
+        "The detection service took too long to respond (cold start or model load timeout). Please try again.",
+        { category: "timeout" }
       );
     }
     throw error;
@@ -276,7 +309,8 @@ export async function requestDetection(
     if (error instanceof DOMException && error.name === "AbortError") throw error;
     if (error instanceof DetectionApiError) throw error;
     throw new DetectionApiError(
-      "The detection service could not be reached. Check its URL and service status."
+      "The detection service could not be reached due to a network or CORS error. Check that the service is running and origin allowlist permits this domain.",
+      { category: "cors_or_network" }
     );
   }
 

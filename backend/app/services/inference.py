@@ -81,8 +81,9 @@ class ModelRegistry:
         for spec in self.specs.values():
             present = spec.path.is_file()
             detail = spec.description
+            classes: list[str] = []
             if spec.id == "yolo26s" and present and not self._trusted_yolo26s_present():
-                entries.append(ModelStatus(id=spec.id, label=spec.label, available=False, detail="Trusted checkpoint integrity verification failed."))
+                entries.append(ModelStatus(id=spec.id, label=spec.label, available=False, detail="Trusted checkpoint integrity verification failed.", classes=[]))
                 continue
             if not present:
                 detail = f"Checkpoint is not installed. Add {spec.path.name} through the deployment configuration."
@@ -90,7 +91,16 @@ class ModelRegistry:
                 detail = "Trusted deployment artifact could not be loaded."
             elif spec.id == "yolo26s" and spec.path.suffix.lower() == ".onnx":
                 detail = "Trusted derived ONNX artifact from the supplied YOLO26s checkpoint; checksum verified."
-            entries.append(ModelStatus(id=spec.id, label=spec.label, available=present and spec.id not in self._load_errors, detail=detail))
+                try:
+                    session = self._models.get(spec.id)
+                    if session is None and present:
+                        _, session = self.get_model(spec.id)
+                    if session is not None:
+                        names_map = _class_names_from_metadata(session)
+                        classes = [names_map[k] for k in sorted(names_map.keys())]
+                except Exception:
+                    classes = ["litter"]
+            entries.append(ModelStatus(id=spec.id, label=spec.label, available=present and spec.id not in self._load_errors, detail=detail, classes=classes))
         return entries
 
     def get_model(self, model_id: ModelId) -> tuple[ModelSpec, Any]:
@@ -157,7 +167,7 @@ def _xywh_to_xyxy(boxes: np.ndarray) -> np.ndarray:
 
 
 def _nms_indices(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float, max_detections: int = 300) -> np.ndarray:
-    """Perform deterministic class-aware NMS for the single-class YOLO26s model without importing PyTorch."""
+    """Perform deterministic class-aware NMS without importing PyTorch."""
     order = np.argsort(-scores, kind="stable")
     selected: list[int] = []
     areas = np.maximum(0.0, boxes[:, 2] - boxes[:, 0]) * np.maximum(0.0, boxes[:, 3] - boxes[:, 1])
@@ -179,7 +189,7 @@ def _nms_indices(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float, ma
 
 
 def _postprocess_yolo26_output(raw_output: np.ndarray, image_width: int, image_height: int, image_size: int, confidence_threshold: float, iou_threshold: float) -> list[tuple[int, float, np.ndarray]]:
-    """Convert the verified YOLO26s ONNX output tensor into original-image detections."""
+    """Convert the verified YOLO26 ONNX output tensor into original-image detections with per-class NMS."""
     if raw_output.ndim != 3 or raw_output.shape[0] != 1 or raw_output.shape[1] < 5:
         raise ValueError("Unexpected trusted ONNX output shape.")
     candidates = raw_output[0].transpose(1, 0)
@@ -192,12 +202,24 @@ def _postprocess_yolo26_output(raw_output: np.ndarray, image_width: int, image_h
     boxes = _xywh_to_xyxy(candidates[keep, :4])
     confidence = confidence[keep]
     class_ids = class_ids[keep]
-    selected = _nms_indices(boxes, confidence, iou_threshold)
+
+    selected_indices: list[int] = []
+    unique_classes = np.unique(class_ids)
+    for c_id in unique_classes:
+        c_mask = class_ids == c_id
+        c_indices = np.where(c_mask)[0]
+        c_boxes = boxes[c_mask]
+        c_scores = confidence[c_mask]
+        c_selected = _nms_indices(c_boxes, c_scores, iou_threshold)
+        selected_indices.extend(c_indices[c_selected])
+
+    selected_indices = sorted(selected_indices, key=lambda idx: float(confidence[idx]), reverse=True)
+
     gain = min(image_size / image_height, image_size / image_width)
     pad_x = round((image_size - image_width * gain) / 2 - 0.1)
     pad_y = round((image_size - image_height * gain) / 2 - 0.1)
     detections: list[tuple[int, float, np.ndarray]] = []
-    for index in selected:
+    for index in selected_indices:
         box = boxes[index].copy()
         box[[0, 2]] = (box[[0, 2]] - pad_x) / gain
         box[[1, 3]] = (box[[1, 3]] - pad_y) / gain
@@ -290,6 +312,10 @@ class InferenceService:
         # per-class thresholds are available via /v1/bandit/status).
         representative_class = class_names.get(0, "litter")
         effective_conf_threshold = self._effective_threshold(representative_class)
+        per_class_thresholds = {
+            cn: round(self._effective_threshold(cn), 4)
+            for cn in class_names.values()
+        }
 
         return DetectionResponse(
             model=model_spec.id,
@@ -301,6 +327,7 @@ class InferenceService:
             image_size=ImageSize(width=image.width, height=image.height),
             runtime=RuntimeConfiguration(
                 confidence_threshold=round(effective_conf_threshold, 4),
+                per_class_thresholds=per_class_thresholds,
                 iou_threshold=self.settings.iou_threshold,
                 input_size=model_input_size,
                 device="cpu",

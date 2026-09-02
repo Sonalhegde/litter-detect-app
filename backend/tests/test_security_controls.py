@@ -27,3 +27,21 @@ def test_no_arbitrary_model_path_or_cross_origin_credentials_are_accepted(client
     assert response.status_code == 422
     preflight = client.options("/v1/detections", headers={"Origin": "https://allowed.example", "Access-Control-Request-Method": "POST"})
     assert preflight.headers.get("access-control-allow-credentials") is None
+
+
+def test_rate_limiter_proxy_ip_resolution_and_spoof_protection() -> None:
+    from unittest.mock import MagicMock
+    from app.services.rate_limit import client_identifier
+
+    # 1. Trusted reverse proxy request: X-Forwarded-For extracted
+    trusted_req = MagicMock()
+    trusted_req.client.host = "127.0.0.1"
+    trusted_req.headers = {"x-forwarded-for": "203.0.113.50, 10.0.0.1"}
+    assert client_identifier(trusted_req, trust_proxy_headers=True) == "203.0.113.50"
+
+    # 2. Untrusted direct connection: X-Forwarded-For ignored, connection peer host returned
+    untrusted_req = MagicMock()
+    untrusted_req.client.host = "198.51.100.99"
+    untrusted_req.headers = {"x-forwarded-for": "203.0.113.50"}
+    assert client_identifier(untrusted_req, trust_proxy_headers=False) == "198.51.100.99"
+
