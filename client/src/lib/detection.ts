@@ -71,7 +71,7 @@ export class DetectionApiError extends Error {
 
 const defaultApiUrl = import.meta.env.DEV
   ? "/inference-api"
-  : "https://litter-detect-inference.onrender.com";
+  : "https://sentinal-yhe0.onrender.com";
 export const API_BASE_URL = (
   import.meta.env.VITE_INFERENCE_API_URL || defaultApiUrl
 ).replace(/\/$/, "");
@@ -276,12 +276,22 @@ async function fetchWithTimeout(
 }
 
 export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
-  const response = await fetchWithTimeout(
-    `${API_BASE_URL}/health`,
-    {},
-    signal,
-    20_000
-  );
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      `${API_BASE_URL}/health`,
+      {},
+      signal,
+      20_000
+    );
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    if (error instanceof DetectionApiError) throw error;
+    throw new DetectionApiError(
+      "Inference health check failed due to a network or CORS restriction.",
+      { category: "cors_or_network" }
+    );
+  }
   if (!response.ok) throw await parseError(response);
   return (await response.json()) as HealthResponse;
 }

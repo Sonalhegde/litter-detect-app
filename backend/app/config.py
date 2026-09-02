@@ -14,6 +14,7 @@ DEFAULT_ALLOWED_ORIGINS = (
     "https://bluesentinel-ai.vercel.app",
     "https://sentinalapp.vercel.app",
     "https://litter-detect-app.vercel.app",
+    "https://sentinal-theta.vercel.app",
 )
 
 

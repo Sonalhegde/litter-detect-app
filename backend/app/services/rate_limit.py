@@ -64,8 +64,10 @@ def client_identifier(request: Request, trust_proxy_headers: bool | None = None)
         else:
             trust_proxy_headers = False
 
-    # Trust forwarded headers if trust_proxy_headers is configured OR direct peer is a trusted/private proxy
-    is_trusted = trust_proxy_headers or direct_peer in KNOWN_TRUSTED_PROXIES or _is_private_ip(direct_peer)
+    # Only trust forwarded headers if enabled AND direct peer is a trusted/private proxy
+    is_trusted = (trust_proxy_headers or settings is None) and (
+        direct_peer in KNOWN_TRUSTED_PROXIES or _is_private_ip(direct_peer)
+    )
 
     if is_trusted:
         forwarded_for = request.headers.get("x-forwarded-for")

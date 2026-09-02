@@ -45,3 +45,10 @@ def test_rate_limiter_proxy_ip_resolution_and_spoof_protection() -> None:
     untrusted_req.headers = {"x-forwarded-for": "203.0.113.50"}
     assert client_identifier(untrusted_req, trust_proxy_headers=False) == "198.51.100.99"
 
+    # 3. Direct public connection attempting spoofing with X-Forwarded-For: peer host returned
+    spoof_req = MagicMock()
+    spoof_req.client.host = "198.51.100.99"
+    spoof_req.headers = {"x-forwarded-for": "203.0.113.50"}
+    assert client_identifier(spoof_req, trust_proxy_headers=True) == "198.51.100.99"
+
+
