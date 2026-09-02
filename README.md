@@ -12,9 +12,7 @@ A web tool for detecting litter in coastal photographs. Upload a shoreline image
 
 ![Sentinal — marine litter detection platform](docs/screenshot.png)
 
-*(Upload panel on the left, annotated result on the right. Boxes and confidence scores are drawn as an SVG overlay on your local image preview.)*
 
----
 
 ## What it does
 
