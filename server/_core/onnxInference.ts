@@ -1,4 +1,3 @@
-import ort from "onnxruntime-node";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
@@ -40,13 +39,34 @@ export interface InferenceResult {
   };
 }
 
-let sessionPromise: Promise<ort.InferenceSession> | null = null;
+let ortModule: any = null;
+let activeEngineName = "onnxruntime-node";
+
+async function loadOrtModule(): Promise<any> {
+  if (ortModule) return ortModule;
+  try {
+    const mod = await import("onnxruntime-node");
+    ortModule = mod.default || mod;
+    activeEngineName = "onnxruntime-node";
+    return ortModule;
+  } catch (e1) {
+    console.warn("onnxruntime-node failed to load, falling back to onnxruntime-web WASM:", e1);
+    const mod = await import("onnxruntime-web");
+    ortModule = mod.default || mod;
+    activeEngineName = "onnxruntime-web";
+    return ortModule;
+  }
+}
+
+let sessionPromise: Promise<any> | null = null;
 
 function getModelPath(): string {
   const rootDir = path.resolve(import.meta.dirname, "../..");
   const possiblePaths = [
     path.join(rootDir, "backend", "models", "yolo26s.onnx"),
     path.join(rootDir, "models", "yolo26s.onnx"),
+    path.join(process.cwd(), "backend", "models", "yolo26s.onnx"),
+    path.join(process.cwd(), "models", "yolo26s.onnx"),
   ];
 
   for (const p of possiblePaths) {
@@ -54,14 +74,15 @@ function getModelPath(): string {
       return p;
     }
   }
-  throw new Error("yolo26s.onnx model file not found");
+  throw new Error("yolo26s.onnx model file not found in paths: " + possiblePaths.join(", "));
 }
 
-async function getSession(): Promise<ort.InferenceSession> {
+async function getSession(): Promise<any> {
   if (!sessionPromise) {
     sessionPromise = (async () => {
+      const ort = await loadOrtModule();
       const modelPath = getModelPath();
-      const sessionOptions: ort.InferenceSession.SessionOptions = {
+      const sessionOptions: any = {
         intraOpNumThreads: 1,
         interOpNumThreads: 1,
         executionMode: "sequential",
@@ -165,6 +186,7 @@ export async function runOnnxInference(
     floatData[2 * area + i] = b / 255.0; // Blue
   }
 
+  const ort = await loadOrtModule();
   const inputName = session.inputNames[0];
   const inputTensor = new ort.Tensor("float32", floatData, [1, 3, targetSize, targetSize]);
 
