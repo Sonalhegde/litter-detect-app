@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import detection, feedback, health, model
+from app.api import detection, feedback, health, model, relevance
 from app.config import Settings, load_settings
 from app.core.logging import RequestAuditMiddleware
 from app.services.bandit import BanditRegistry
@@ -85,6 +85,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application.include_router(health.router)
     application.include_router(model.router)
+    application.include_router(relevance.router)
     application.include_router(detection.router)
     application.include_router(feedback.router)
     return application

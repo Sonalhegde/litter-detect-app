@@ -189,6 +189,10 @@ main { flex: 1; }
   align-items: start;
   padding-bottom: 80px;
 }
+/* Dashboard layout — spec §20: ~70/30 image/results split on desktop */
+.workspace--dashboard { grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); }
+.workspace-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.workspace-col > .panel { margin: 0; }
 
 /* ─── Panel (shared card) ─────────────────────────────────────────────────── */
 .panel {
@@ -490,6 +494,279 @@ main { flex: 1; }
 }
 .btn-ghost:hover:not(:disabled) { color: var(--text-2); }
 
+/* ─── Status chips — spec §18 ─────────────────────────────────────────────── */
+.status-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.status-chip--under-progress {
+  color: #9ac7ff;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+.status-chip--not-available {
+  color: var(--text-3);
+  background: var(--border-soft);
+  border: 1px solid var(--border);
+}
+
+/* ─── Hero model status line ──────────────────────────────────────────────── */
+.hero-model-status { font-size: 0.875rem; margin-top: 12px; }
+.hero-model-status strong { color: var(--text); }
+
+/* ─── File metadata row — spec §4 ─────────────────────────────────────────── */
+.file-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-2);
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.file-meta span:first-child { flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─── Original / Detection view toggle — spec §11 ─────────────────────────── */
+.view-toggle {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.view-toggle button {
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-2);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  transition: background .15s, color .15s;
+}
+.view-toggle button:hover { color: var(--text); }
+.view-toggle-btn--active { background: var(--accent-bg) !important; color: var(--accent) !important; }
+
+/* ─── Canvas stage + zoom toolbar — spec §5, §12 ──────────────────────────── */
+.canvas-block { display: flex; flex-direction: column; gap: 10px; }
+.canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.canvas-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 30px;
+  min-width: 30px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--text-2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color .15s, color .15s;
+}
+.canvas-toolbar button:hover { border-color: var(--accent); color: var(--text); }
+.canvas-zoom-label {
+  margin-right: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.canvas-stage {
+  position: relative;
+  overflow: auto;
+  max-height: 560px;
+  border-radius: var(--radius);
+  background: #e8eeeb;
+}
+.canvas-stage-inner {
+  position: relative;
+  transform-origin: top left;
+  width: fit-content;
+}
+.canvas-img {
+  display: block;
+  max-width: 100%;
+  max-height: 560px;
+  object-fit: contain;
+}
+.canvas-note { margin-top: 0; }
+
+/* Selected detection emphasis — spec §10 two-way highlight */
+.det-group { cursor: pointer; }
+.det-box { transition: stroke-width .12s; }
+.det-box--selected { stroke-width: 4; }
+.det-group--selected .det-box { filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.8)); }
+
+/* ─── Sub-panels inside the results column ────────────────────────────────── */
+.subpanel {
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.subpanel-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.subpanel-header h3 { margin: 0; font-size: 0.9375rem; }
+.subpanel-note { font-size: 0.8125rem; color: var(--text-3); line-height: 1.55; margin-bottom: 8px; }
+
+/* ─── Metric rows (model info, evaluation, etc.) ──────────────────────────── */
+.metric-rows { display: flex; flex-direction: column; gap: 1px; list-style: none; margin: 0; padding: 0; }
+.metric-rows li, .metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+.metric-rows li:last-child, .metric:last-child { border-bottom: 0; }
+.metric-label { color: var(--text-2); }
+.metric-value { color: var(--text); font-weight: 600; text-align: right; }
+.metric-value--muted { font-weight: 400; color: var(--text-2); }
+
+/* ─── Summary grid — spec §6 ──────────────────────────────────────────────── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.stat-tile--empty { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+
+/* ─── Threshold slider — spec §9 ──────────────────────────────────────────── */
+.threshold-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.threshold-row--inline { margin-bottom: 14px; }
+.threshold-row--inline label { font-size: 0.875rem; color: var(--text-2); white-space: nowrap; }
+.threshold-row input[type="range"] { flex: 1; accent-color: var(--accent); min-width: 0; }
+.threshold-value {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 48px;
+  text-align: right;
+}
+
+/* ─── Class breakdown list — spec §7 ──────────────────────────────────────── */
+.class-list { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+.class-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 2px;
+  font-size: 0.875rem;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+.class-list li:last-child { border-bottom: 0; }
+.class-count { font-weight: 600; color: var(--text); }
+
+/* ─── Confidence histogram — spec §8 ──────────────────────────────────────── */
+.histogram { display: flex; flex-direction: column; gap: 8px; }
+.histogram-row { display: grid; grid-template-columns: 64px 1fr 28px; align-items: center; gap: 10px; }
+.histogram-label { font-size: 0.75rem; color: var(--text-3); font-family: var(--font-mono); }
+.histogram-bar-track {
+  display: block;
+  height: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.histogram-bar {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width .25s ease;
+}
+.histogram-count { font-size: 0.75rem; color: var(--text-2); text-align: right; font-family: var(--font-mono); }
+
+/* ─── Detection table — spec §10 ──────────────────────────────────────────── */
+.table-scroll { overflow-x: auto; }
+.detection-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+.detection-table th, .detection-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+.detection-table th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.detection-table td { color: var(--text-2); }
+.detection-table td:first-child { font-family: var(--font-mono); color: var(--text-3); }
+.detection-table tbody tr { cursor: pointer; transition: background .12s; }
+.detection-table tbody tr:hover { background: var(--surface-hover); }
+.detection-table tbody tr.det-row--selected { background: var(--accent-bg); }
+.link-btn {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: border-color .15s;
+}
+.link-btn:hover { border-color: var(--accent); }
+
+/* ─── Loading steps — spec §21 ────────────────────────────────────────────── */
+.loading-steps { margin: 10px 0 0; padding: 0; list-style: none; text-align: left; display: grid; gap: 6px; }
+.loading-steps li {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+  padding-left: 18px;
+  position: relative;
+}
+.loading-steps li::before {
+  content: "○";
+  position: absolute;
+  left: 0;
+  color: var(--text-3);
+}
+.loading-step--done { color: var(--accent) !important; }
+.loading-step--done::before { content: "●" !important; color: var(--accent) !important; }
+.loading-step--active { color: var(--text) !important; }
+.loading-step--active::before { content: "◐" !important; color: var(--accent) !important; }
+
+/* ─── Buttons row wrap + secondary with icon ──────────────────────────────── */
+.btn-row--wrap { flex-wrap: wrap; }
+.btn-row--wrap .btn-secondary { display: inline-flex; align-items: center; gap: 7px; flex: initial; }
+.btn-secondary { display: inline-flex; align-items: center; gap: 7px; }
+
+/* ─── Evaluation page — spec §19 ──────────────────────────────────────────── */
+.eval-panel { max-width: 720px; }
+.eval-rows { margin-top: 4px; }
+
 /* ─── Footer ──────────────────────────────────────────────────────────────── */
 footer {
   border-top: 1px solid var(--border);
@@ -603,6 +880,8 @@ footer {
   .docs-sidebar { position: static; }
   .docs-sidebar nav { flex-direction: row; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .docs-nav-btn { padding: 6px 10px; }
+  /* Dashboard stacks image → results on tablet/mobile — spec §20 */
+  .workspace--dashboard { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {
@@ -618,7 +897,8 @@ footer {
 
 @media (max-width: 480px) {
   .result-stats { grid-template-columns: 1fr; }
-  .topbar-left { gap: 20px; }
+  .summary-grid { grid-template-columns: 1fr; }
+  .topbar-left { gap: 20px; flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

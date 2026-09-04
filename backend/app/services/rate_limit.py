@@ -59,15 +59,15 @@ def client_identifier(request: Request, trust_proxy_headers: bool | None = None)
 
     if trust_proxy_headers is None:
         settings = getattr(request.app.state, "settings", None)
-        if settings is not None:
-            trust_proxy_headers = getattr(settings, "trust_proxy_headers", False)
-        else:
-            trust_proxy_headers = False
+        trust_proxy_headers = (
+            getattr(settings, "trust_proxy_headers", False) if settings is not None else False
+        )
 
-    # Only trust forwarded headers if enabled AND direct peer is a trusted/private proxy
-    is_trusted = (trust_proxy_headers or settings is None) and (
-        direct_peer in KNOWN_TRUSTED_PROXIES or _is_private_ip(direct_peer)
-    )
+    # Only trust forwarded headers if enabled AND the direct peer is a trusted proxy
+    # (loopback). Private-range peers are deliberately not trusted: ipaddress treats
+    # documentation ranges (198.51.100.0/24, 203.0.113.0/24) as private, which would
+    # let test/doc-range spoofed peers through.
+    is_trusted = trust_proxy_headers and direct_peer in KNOWN_TRUSTED_PROXIES
 
     if is_trusted:
         forwarded_for = request.headers.get("x-forwarded-for")

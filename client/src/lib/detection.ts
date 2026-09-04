@@ -327,3 +327,66 @@ export async function requestDetection(
   if (!response.ok) throw await parseError(response);
   return toCamelResponse((await response.json()) as Record<string, unknown>);
 }
+
+// ── Anti-Analyzer / input relevance gate (spec §7) ────────────────────────────
+export type RelevanceStatus = "relevant" | "uncertain" | "unrelated" | "unavailable";
+
+export type RelevanceCheck = {
+  inputValid: boolean;
+  status: RelevanceStatus;
+  score: number | null;
+  checkerAvailable: boolean;
+};
+
+const RELEVANCE_STATUSES: readonly RelevanceStatus[] = ["relevant", "uncertain", "unrelated", "unavailable"];
+
+function toRelevanceCheck(raw: Record<string, unknown>): RelevanceCheck {
+  const input = (raw.input ?? {}) as Record<string, unknown>;
+  const relevance = (raw.relevance ?? {}) as Record<string, unknown>;
+  const status = String(relevance.status ?? "unavailable");
+  const rawScore = relevance.score;
+  return {
+    inputValid: Boolean(input.valid ?? false),
+    status: (RELEVANCE_STATUSES as readonly string[]).includes(status)
+      ? (status as RelevanceStatus)
+      : "unavailable",
+    score: typeof rawScore === "number" ? rawScore : null,
+    checkerAvailable: Boolean(relevance.checker_available ?? false),
+  };
+}
+
+/**
+ * Ask the Anti-Analyzer whether the image is in the marine/coastal domain,
+ * BEFORE running the debris detector. Returns `null` when the deployed
+ * backend predates this endpoint (HTTP 404/405) so the caller can fall back
+ * to the legacy single-call flow. A network/server failure throws — service
+ * failure must never be interpreted as an unrelated image.
+ */
+export async function requestRelevance(
+  file: File,
+  signal?: AbortSignal
+): Promise<RelevanceCheck | null> {
+  const body = new FormData();
+  body.append("file", file);
+
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      `${API_BASE_URL}/v1/relevance`,
+      { method: "POST", body },
+      signal,
+      45_000
+    );
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    if (error instanceof DetectionApiError) throw error;
+    throw new DetectionApiError(
+      "The relevance service could not be reached due to a network or CORS error.",
+      { category: "cors_or_network" }
+    );
+  }
+
+  if (response.status === 404 || response.status === 405) return null;
+  if (!response.ok) throw await parseError(response);
+  return toRelevanceCheck((await response.json()) as Record<string, unknown>);
+}

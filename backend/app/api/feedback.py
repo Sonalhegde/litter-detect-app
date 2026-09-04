@@ -11,6 +11,7 @@ are used only to correlate feedback events from the same image session.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
+from starlette.concurrency import run_in_threadpool
 
 from app.api.dependencies import get_bandit_registry
 from app.schemas.feedback import (
@@ -42,29 +43,33 @@ async def submit_feedback(
     - missed     → reward -1 on the "reject" decision at STATIC_FALLBACK confidence,
                    nudging the threshold down for that class.
     """
-    for item in body.detections:
-        reward = 1.0 if item.verdict == "correct" else -1.0
-        accepted = item.verdict == "correct"
-        bandit.record_feedback(
-            class_name=item.class_name,
-            confidence=item.confidence,
-            accepted=accepted,
-            reward=reward,
-            image_hash=item.image_hash,
-            detection_id=item.detection_id,
-        )
+    def _record_all() -> None:
+        for item in body.detections:
+            reward = 1.0 if item.verdict == "correct" else -1.0
+            accepted = item.verdict == "correct"
+            bandit.record_feedback(
+                class_name=item.class_name,
+                confidence=item.confidence,
+                accepted=accepted,
+                reward=reward,
+                image_hash=item.image_hash,
+                detection_id=item.detection_id,
+            )
 
-    for missed in body.missed:
-        # A missed detection: the system rejected (or never surfaced) a real object.
-        # We record this as a reject decision with negative reward to push threshold down.
-        bandit.record_feedback(
-            class_name=missed.class_name,
-            confidence=0.25,   # proxy: static fallback confidence
-            accepted=False,
-            reward=-1.0,
-            image_hash=missed.image_hash,
-            detection_id=None,
-        )
+        for missed in body.missed:
+            # A missed detection: the system rejected (or never surfaced) a real object.
+            # We record this as a reject decision with negative reward to push threshold down.
+            bandit.record_feedback(
+                class_name=missed.class_name,
+                confidence=0.25,   # proxy: static fallback confidence
+                accepted=False,
+                reward=-1.0,
+                image_hash=missed.image_hash,
+                detection_id=None,
+            )
+
+    # SQLite writes are blocking; keep them off the asyncio event loop.
+    await run_in_threadpool(_record_all)
 
 
 @router.get("/v1/bandit/status", response_model=BanditStatusResponse)
@@ -75,9 +80,8 @@ async def bandit_status(
     Admin/debug view of the current effective threshold for every class.
     Useful for sanity-checking that the bandit hasn't drifted to 0 or 100%.
     """
-    return BanditStatusResponse(
-        classes=[BanditClassStatus(**entry) for entry in bandit.status()]
-    )
+    entries = await run_in_threadpool(bandit.status)
+    return BanditStatusResponse(classes=[BanditClassStatus(**entry) for entry in entries])
 
 
 @router.get("/v1/bandit/eval", response_model=OfflineEvalResponse)
@@ -89,4 +93,4 @@ async def offline_eval(
     bandit accept/reject decisions vs the static 25% threshold.
     Returns per-class precision and recall estimates.
     """
-    return OfflineEvalResponse(results=bandit.offline_eval())
+    return OfflineEvalResponse(results=await run_in_threadpool(bandit.offline_eval))

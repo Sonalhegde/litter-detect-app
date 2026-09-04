@@ -123,7 +123,9 @@ class BanditRegistry:
         default = os.environ.get("BANDIT_DB_PATH", "/tmp/sentinel_bandit.db")
         self._db_path = db_path or Path(default)
         self._bandits: dict[str, ClassBandit] = {}
-        self._lock = threading.Lock()
+        # Reentrant: record_feedback holds this lock and calls get_or_create,
+        # which acquires it again on the same thread.
+        self._lock = threading.RLock()
         self._rng = np.random.default_rng()
         self._init_db()
         self._load_all()

@@ -291,11 +291,6 @@ model  — model ID (optional; default: yolo26s)`}</code></pre>
               His research interests include fisheries management, ecosystem modelling,
               and marine ecology.
             </p>
-            <div className="credit-links">
-              <a href="mailto:s.dutta@squ.edu.om">
-                <Mail size={12} /> s.dutta@squ.edu.om
-              </a>
-            </div>
           </div>
 
           <div className="credit-block">

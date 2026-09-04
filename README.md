@@ -156,7 +156,6 @@ Built by **Sonal Hegde**
 
 With guidance and mentorship from **Dr. Sachinandan Dutta**, Associate Professor, Department of Marine Science and Fisheries, Sultan Qaboos University, Muscat, Oman.
 Research interests: fisheries management, ecosystem modelling, marine ecology.
-[s.dutta@squ.edu.om](mailto:s.dutta@squ.edu.om)
 
 ---
 

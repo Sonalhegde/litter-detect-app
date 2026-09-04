@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
@@ -20,6 +22,7 @@ from app.services.scene_check import BLOCK_THRESHOLD, SceneChecker
 
 
 router = APIRouter(tags=["detection"])
+logger = logging.getLogger("bluesentinel.api")
 
 
 @router.post("/v1/detections", response_model=DetectionResponse)
@@ -38,6 +41,7 @@ async def detect_litter(
     if retry_after is not None:
         raise ApiProblem(429, "rate_limited", "Too many inference requests. Please wait before trying again.", {"Retry-After": str(retry_after)})
 
+    started = time.perf_counter()
     model_id = normalize_model_id(model)
     image = await read_and_validate_image(file, settings)
 
@@ -75,6 +79,16 @@ async def detect_litter(
 
     # ── Run detection ────────────────────────────────────────────────────────
     result = await inference_service.detect(image, model_id)
+
+    logger.info(
+        "request_id=%s model=%s relevance_status=%s checker_available=%s detection_count=%s duration_ms=%s",
+        getattr(request.state, "request_id", None),
+        model_id,
+        scene_result.verdict,
+        scene_result.available,
+        result.count,
+        round((time.perf_counter() - started) * 1000, 1),
+    )
 
     # Attach scene relevance to the result (soft-warn case included)
     return result.model_copy(update={"scene_relevance": scene_relevance})
