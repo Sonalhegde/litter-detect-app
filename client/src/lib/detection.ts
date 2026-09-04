@@ -388,5 +388,16 @@ export async function requestRelevance(
 
   if (response.status === 404 || response.status === 405) return null;
   if (!response.ok) throw await parseError(response);
-  return toRelevanceCheck((await response.json()) as Record<string, unknown>);
+
+  // A pre-relevance backend whose SPA catch-all answers every route with the
+  // index page returns HTTP 200 with HTML — treat that as "endpoint missing"
+  // and fall back to the legacy single-call flow.
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return null;
+
+  try {
+    return toRelevanceCheck((await response.json()) as Record<string, unknown>);
+  } catch {
+    return null;
+  }
 }

@@ -4,7 +4,6 @@ import { createServer, request as httpRequest } from "http";
 import net from "net";
 import os from "os";
 import fs from "fs";
-import crypto from "crypto";
 import { execFile } from "child_process";
 import path from "path";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -167,44 +166,67 @@ async function startServer() {
       await fs.promises.unlink(tmpPath).catch(() => {});
     } catch {}
 
-    // 3. Last-resort fallback
-    const hash = crypto.createHash("sha256").update(file.buffer).digest("hex");
-    const hashNum1 = parseInt(hash.slice(0, 8), 16);
-    const hashNum2 = parseInt(hash.slice(8, 16), 16);
+    // 3. No model result — report an honest failure. Never fabricate detections.
+    res.status(503).json({
+      detail: {
+        code: "model_unavailable",
+        message: "The detection model could not be run for this image. No results were produced.",
+      },
+    });
+  });
 
-    const conf = 0.65 + ((hashNum1 % 30) / 100);
-    const x1 = 40 + (hashNum1 % 180);
-    const y1 = 40 + (hashNum2 % 180);
-    const x2 = Math.min(x1 + 180 + (hashNum2 % 160), 760);
-    const y2 = Math.min(y1 + 140 + (hashNum1 % 160), 560);
+  // Anti-Analyzer / input relevance gate — validates the upload and reports
+  // whether a relevance verdict is available. This Node deployment has no
+  // scene-classification model, so the honest verdict is "unavailable" —
+  // a service limitation, never a claim that the image is unrelated.
+  app.post("/v1/relevance", upload.single("file"), async (req, res) => {
+    const file = req.file;
+    const startedAt = Date.now();
+
+    if (!file || !file.buffer || file.size === 0) {
+      res.status(400).json({ detail: { code: "empty_file", message: "The selected image is empty." } });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      res.status(413).json({ detail: { code: "file_too_large", message: "Images must be 8 MB or smaller." } });
+      return;
+    }
+
+    // Format sniff on magic bytes — never trust the client-declared MIME type
+    const buf = file.buffer;
+    const isJpeg = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+    const isPng = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+    const isWebp = buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP";
+    if (!isJpeg && !isPng && !isWebp) {
+      res.status(415).json({ detail: { code: "unsupported_image_format", message: "Upload a JPEG, PNG, or WebP image." } });
+      return;
+    }
+
+    // Real decode via sharp — corrupted images are rejected, dimensions come from the actual bitmap
+    let width = 0;
+    let height = 0;
+    try {
+      const { default: sharp } = await import("sharp");
+      const meta = await sharp(buf).metadata();
+      width = meta.width ?? 0;
+      height = meta.height ?? 0;
+      if (!width || !height) throw new Error("no dimensions");
+      if (width > 3000 || height > 3000 || width * height > 6_000_000) {
+        res.status(413).json({ detail: { code: "image_dimensions_exceeded", message: "Images may be at most 3000 × 3000 pixels and 6 megapixels." } });
+        return;
+      }
+    } catch {
+      res.status(415).json({ detail: { code: "invalid_image", message: "The selected file could not be read as a supported image." } });
+      return;
+    }
+
+    console.log(
+      `relevance request=${Date.now()} bytes=${file.size} image=${width}x${height} status=unavailable duration_ms=${Date.now() - startedAt}`
+    );
 
     res.json({
-      model: model,
-      model_label: "YOLO26s",
-      detections: [
-        {
-          id: 1,
-          class_name: "litter",
-          confidence: Math.round(conf * 100) / 100,
-          bbox: { x1, y1, x2, y2 },
-        },
-      ],
-      count: 1,
-      inference_time_sec: 0.12,
-      image_size: { width: 800, height: 600 },
-      summary: [{ class_name: "litter", count: 1 }],
-      runtime: {
-        confidence_threshold: 0.25,
-        iou_threshold: 0.45,
-        input_size: 320,
-        device: "cpu",
-        engine: "onnxruntime-node",
-      },
-      scene_relevance: {
-        score: 0.95,
-        verdict: "pass",
-        checker_available: true,
-      },
+      input: { valid: true, width, height },
+      relevance: { status: "unavailable", score: null, checker_available: false },
     });
   });
 

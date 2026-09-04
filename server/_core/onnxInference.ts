@@ -160,7 +160,7 @@ export async function runOnnxInference(
     .resize(resizedW, resizedH, { fit: "fill" })
     .toBuffer();
 
-  const { data: rawPixels } = await sharp({
+  const rawPixels: Buffer = await sharp({
     create: {
       width: targetSize,
       height: targetSize,
@@ -258,28 +258,10 @@ export async function runOnnxInference(
 
   const durationSec = Math.round((Date.now() - startTime) / 1000 * 1000) / 1000;
 
-  // Scene relevance evaluation: check for non-coastal documents, ID cards, and out-of-domain images
-  let sceneResult = { score: 0.92, verdict: "pass", available: true };
-  try {
-    const stats = await sharp(imageBuffer).stats();
-    const channels = stats.channels;
-    if (channels && channels.length >= 3) {
-      const r = channels[0].mean;
-      const g = channels[1].mean;
-      const b = channels[2].mean;
-      const stdR = channels[0].stdev;
-
-      const avgBrightness = (r + g + b) / 3;
-      const maxChannelDiff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
-
-      // Document / ID card / high-brightness card check
-      if (avgBrightness > 175 && maxChannelDiff < 40 && stdR < 50) {
-        sceneResult = { score: 0.08, verdict: "block", available: true };
-      } else if (r > g && g > b && (r - b) > 35 && stdR < 40) {
-        sceneResult = { score: 0.12, verdict: "block", available: true };
-      }
-    }
-  } catch {}
+  // No scene-classification model runs in this deployment. Report the checker
+  // as unavailable rather than fabricating a relevance verdict from pixel
+  // statistics — color heuristics are not a reliable domain check.
+  const sceneResult = { score: 1.0, verdict: "pass", checker_available: false };
 
   return {
     model: modelId,
