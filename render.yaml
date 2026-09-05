@@ -1,7 +1,11 @@
 services:
   - type: web
     runtime: docker
-    name: litter-detect-inference
+    # Must match the live Render service ("sentinal-yhe0.onrender.com") so a
+    # blueprint sync attaches to it instead of creating a duplicate service.
+    # The production frontend's API origin and the keep-alive workflow's
+    # RENDER_HEALTH_URL are tied to this same name — change all together.
+    name: sentinal-yhe0
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
