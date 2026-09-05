@@ -50,6 +50,11 @@ def client(tmp_path):  # type: ignore[no-untyped-def]
         yolo26m_model_path=tmp_path / "missing-yolo26m.pt",
         yolo26l_model_path=tmp_path / "missing-yolo26l.pt",
         yolo26x_model_path=tmp_path / "missing-yolo26x.pt",
+        # Keep the scene checker offline in endpoint tests: its artifacts are
+        # pointed at missing files so /v1/relevance deterministically reports
+        # "unavailable" without loading the 89 MB CLIP session per test.
+        relevance_vision_model_path=tmp_path / "missing-clip-vision.onnx",
+        relevance_embeddings_path=tmp_path / "missing-embeddings.npz",
         max_upload_mb=1,
         max_image_width=200,
         max_image_height=200,

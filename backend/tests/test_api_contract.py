@@ -51,6 +51,10 @@ def test_missing_variant_checkpoint_returns_safe_model_unavailable_response(tmp_
         yolo26m_model_path=tmp_path / "missing-yolo26m.pt",
         yolo26l_model_path=tmp_path / "missing-yolo26l.pt",
         yolo26x_model_path=tmp_path / "missing-yolo26x.pt",
+        # Keep the relevance gate offline so this test exercises the
+        # model-unavailable path rather than a scene block.
+        relevance_vision_model_path=tmp_path / "missing-clip-vision.onnx",
+        relevance_embeddings_path=tmp_path / "missing-embeddings.npz",
     )
     with TestClient(create_app(settings)) as unavailable_client:
         response = unavailable_client.post("/v1/detections", files={"file": ("sample.png", image_bytes(), "image/png")}, data={"model": "yolo26n"})

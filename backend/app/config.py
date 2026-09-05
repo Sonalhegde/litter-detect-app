@@ -8,6 +8,14 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT_DIR / "models"
 DEFAULT_TRUSTED_YOLO26S_SHA256 = "969bbf4733dd1486478e55cbb511569dc0bb7a75cf889597274b02b336b3ceb2"
+# Scene-relevance checker artifacts: int8-quantized ONNX export of CLIP ViT-B/32
+# (Xenova/clip-vit-base-patch32 conversion of openai/clip-vit-base-patch32) plus
+# the pre-encoded prompt embeddings for the fixed prompt set. Runs on the
+# onnxruntime already in requirements.txt — no torch dependency.
+DEFAULT_RELEVANCE_VISION_MODEL_NAME = "clip_vision_quantized.onnx"
+DEFAULT_RELEVANCE_EMBEDDINGS_NAME = "scene_text_embeddings.npz"
+DEFAULT_RELEVANCE_VISION_SHA256 = "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299"
+DEFAULT_RELEVANCE_EMBEDDINGS_SHA256 = "a770421670028ce9d29ac3ba09b9376e18ed7144e59d6636c1ddfe416827a615"
 DEFAULT_ALLOWED_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -60,6 +68,10 @@ class Settings:
     yolo26l_model_path: Path
     yolo26x_model_path: Path
     trusted_yolo26s_sha256: str
+    relevance_vision_model_path: Path
+    relevance_embeddings_path: Path
+    relevance_vision_sha256: str
+    relevance_embeddings_sha256: str
     image_size: int
     confidence_threshold: float
     iou_threshold: float
@@ -97,6 +109,10 @@ def load_settings() -> Settings:
         yolo26l_model_path=Path(os.getenv("YOLO26L_MODEL_PATH", MODEL_DIR / "yolo26l.pt")),
         yolo26x_model_path=Path(os.getenv("YOLO26X_MODEL_PATH", MODEL_DIR / "yolo26x.pt")),
         trusted_yolo26s_sha256=os.getenv("YOLO26S_MODEL_SHA256", DEFAULT_TRUSTED_YOLO26S_SHA256).lower(),
+        relevance_vision_model_path=Path(os.getenv("RELEVANCE_VISION_MODEL_PATH", MODEL_DIR / DEFAULT_RELEVANCE_VISION_MODEL_NAME)),
+        relevance_embeddings_path=Path(os.getenv("RELEVANCE_EMBEDDINGS_PATH", MODEL_DIR / DEFAULT_RELEVANCE_EMBEDDINGS_NAME)),
+        relevance_vision_sha256=os.getenv("RELEVANCE_VISION_SHA256", DEFAULT_RELEVANCE_VISION_SHA256).lower(),
+        relevance_embeddings_sha256=os.getenv("RELEVANCE_EMBEDDINGS_SHA256", DEFAULT_RELEVANCE_EMBEDDINGS_SHA256).lower(),
         image_size=get_int_env("INFERENCE_IMAGE_SIZE", 960, 320, 1280),
         confidence_threshold=get_float_env("INFERENCE_CONFIDENCE_THRESHOLD", 0.25, 0.01, 0.99),
         iou_threshold=get_float_env("INFERENCE_IOU_THRESHOLD", 0.45, 0.01, 0.99),

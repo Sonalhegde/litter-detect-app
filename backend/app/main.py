@@ -35,8 +35,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.rate_limiter = SlidingWindowRateLimiter(configured_settings.rate_limit_requests, configured_settings.rate_limit_window_seconds)
         # Bandit registry: loads persisted weights from SQLite on startup
         app.state.bandit_registry = BanditRegistry()
-        # Scene checker: loads CLIP ViT-B/32 weights once; degrades gracefully if not installed
-        app.state.scene_checker = SceneChecker()
+        # Scene checker: ONNX CLIP ViT-B/32 relevance gate; loads lazily on first
+        # request and degrades gracefully if its artifacts are missing
+        app.state.scene_checker = SceneChecker(configured_settings)
         yield
 
     application = FastAPI(
@@ -47,7 +48,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        # Enforce the configured CORS_ALLOWED_ORIGINS allowlist (render.yaml /
+        # environment) instead of a blanket wildcard. parse_origins already
+        # falls back to safe defaults, so the list is never empty.
+        allow_origins=list(configured_settings.allowed_origins) or ["*"],
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],

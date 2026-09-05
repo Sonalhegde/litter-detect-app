@@ -5,10 +5,9 @@ onnxruntime==1.18.1
 opencv-python-headless==4.10.0.84
 pillow==12.3.0
 python-multipart==0.0.32
-# Scene-relevance checker (CLIP zero-shot) — optional.
-# If these are not installed, the scene checker falls back to pass-through
-# and all images proceed to detection without a relevance check.
-# Uncomment to enable on a deployment with sufficient memory (>= 2 GB RAM).
-# --extra-index-url https://download.pytorch.org/whl/cpu
-# torch==2.3.1+cpu
-# open_clip_torch==2.24.0
+# Scene-relevance checker (CLIP zero-shot) runs on the onnxruntime above —
+# no torch/open_clip dependency. The int8-quantized CLIP ViT-B/32 vision tower
+# (models/clip_vision_quantized.onnx) and its pre-encoded prompt embeddings
+# (models/scene_text_embeddings.npz) are bundled in backend/models/ and verified
+# against SHA-256 pins at load time. If the artifacts are missing the checker
+# falls back to pass-through and all images proceed without a relevance check.

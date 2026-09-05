@@ -2,15 +2,51 @@ name: Keep Render inference warm
 
 on:
   schedule:
+    # Every 10 minutes; a random jitter step varies the actual ping time
+    # within each window so requests don't land on the dot every time.
     - cron: "*/10 * * * *"
+    # Weekly heartbeat commit: keeps the repo active so GitHub does not
+    # disable the schedule after ~60 days without repository activity.
+    - cron: "17 3 * * 1"
   workflow_dispatch:
 
 permissions: {}
 
 jobs:
   health-check:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/10 * * * *'
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 6
     steps:
+      - name: Random jitter (0-4 minutes within the 10-minute window)
+        run: sleep $((RANDOM % 240))
       - name: Ping Render health endpoint
-        run: curl --fail --silent --show-error --max-time 30 https://litter-detect-inference.onrender.com/health > /dev/null
+        run: |
+          if curl --fail --silent --show-error --max-time 30 https://litter-detect-inference.onrender.com/health > /dev/null; then
+            echo "Render /health ping succeeded."
+          else
+            echo "::error::Render /health ping failed — the inference service may be down, suspended, or starting."
+            exit 1
+          fi
+
+  heartbeat-commit:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 3 * * 1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update heartbeat timestamp
+        run: date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive-heartbeat
+      - name: Commit heartbeat
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive-heartbeat
+          if git diff --cached --quiet; then
+            echo "Heartbeat unchanged; nothing to commit."
+          else
+            git commit -m "chore: keep-alive heartbeat (repo activity to keep schedule enabled)"
+            git push
+          fi

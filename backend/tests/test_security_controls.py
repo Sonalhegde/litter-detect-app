@@ -6,7 +6,11 @@ from conftest import image_bytes
 def test_cors_allows_preflight_and_cross_origin_requests(client) -> None:  # type: ignore[no-untyped-def]
     allowed = client.options("/v1/detections", headers={"Origin": "https://allowed.example", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
     assert allowed.status_code == 200
-    assert allowed.headers["access-control-allow-origin"] == "*"
+    # The configured allowlist is enforced: the allowed origin is echoed, not a wildcard.
+    assert allowed.headers["access-control-allow-origin"] == "https://allowed.example"
+    disallowed = client.options("/v1/detections", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "POST"})
+    assert disallowed.headers.get("access-control-allow-origin") != "*"
+    assert disallowed.headers.get("access-control-allow-origin") != "https://evil.example"
 
 
 def test_rate_limit_returns_retry_after_without_starting_inference(client) -> None:  # type: ignore[no-untyped-def]
