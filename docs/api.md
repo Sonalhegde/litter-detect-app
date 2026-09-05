@@ -7,7 +7,7 @@ The service validates supported MIME types, file size, image readability, and mo
 Example:
 
 ```bash
-curl -X POST https://litter-detect-inference.onrender.com/v1/detections \
+curl -X POST https://sentinal-yhe0.onrender.com/v1/detections \
   -F 'file=@shoreline.png' \
   -F 'model=yolo26s'
 ```

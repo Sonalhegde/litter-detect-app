@@ -7,8 +7,10 @@ Render Free web services can spin down after 15 minutes without inbound traffic 
 This repository includes `.github/workflows/render-keepalive.yml`. GitHub Actions runs a scheduled `GET` request against:
 
 ```text
-https://litter-detect-inference.onrender.com/health
+https://sentinal-yhe0.onrender.com/health
 ```
+
+The URL is defined as the workflow's `RENDER_HEALTH_URL` environment variable and must match the origin the production frontend calls (`client/src/lib/detection.ts` → `API_BASE_URL`). It previously pointed at an older service URL (`litter-detect-inference.onrender.com`, which returns 503), so the warm-up requests never reached the live service — keep the two in sync whenever the Render service is renamed.
 
 The workflow runs every 10 minutes and can also be started manually from the GitHub Actions tab. It sends no body, credentials, or image data. GitHub Actions schedules are best-effort rather than a strict uptime guarantee: queued workflows can be delayed, and scheduled workflows may be disabled by repository inactivity or platform policy. The workflow reduces ordinary idle spin-down risk; it cannot prevent provider restarts, service suspension, or every cold start.
 

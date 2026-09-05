@@ -12,6 +12,12 @@ on:
 
 permissions: {}
 
+env:
+  # The Render service URL the production frontend actually calls
+  # (client/src/lib/detection.ts -> API_BASE_URL). Update both together
+  # if the Render service is renamed.
+  RENDER_HEALTH_URL: https://sentinal-yhe0.onrender.com/health
+
 jobs:
   health-check:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/10 * * * *'
@@ -22,10 +28,10 @@ jobs:
         run: sleep $((RANDOM % 240))
       - name: Ping Render health endpoint
         run: |
-          if curl --fail --silent --show-error --max-time 30 https://litter-detect-inference.onrender.com/health > /dev/null; then
+          if curl --fail --silent --show-error --max-time 60 "$RENDER_HEALTH_URL" > /dev/null; then
             echo "Render /health ping succeeded."
           else
-            echo "::error::Render /health ping failed — the inference service may be down, suspended, or starting."
+            echo "::error::Render /health ping failed ($RENDER_HEALTH_URL) — the inference service may be down, suspended, or starting."
             exit 1
           fi
 
