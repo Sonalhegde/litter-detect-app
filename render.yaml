@@ -1,11 +1,14 @@
 services:
   - type: web
     runtime: docker
-    # Must match the live Render service ("sentinal-yhe0.onrender.com") so a
-    # blueprint sync attaches to it instead of creating a duplicate service.
-    # The production frontend's API origin and the keep-alive workflow's
-    # RENDER_HEALTH_URL are tied to this same name — change all together.
-    name: sentinal-yhe0
+    # This blueprint builds the PYTHON inference backend (backend/Dockerfile).
+    # It must keep the name of the dashboard's Python service
+    # (litter-detect-inference.onrender.com) so a blueprint sync updates that
+    # service instead of touching the separate Node service
+    # (sentinal-yhe0.onrender.com) the frontend currently calls. If you
+    # consolidate to a single backend, rename here AND update
+    # client/src/lib/detection.ts + .github/workflows/render-keepalive.yml.
+    name: litter-detect-inference
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend

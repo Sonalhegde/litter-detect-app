@@ -13,10 +13,14 @@ on:
 permissions: {}
 
 env:
-  # The Render service URL the production frontend actually calls
+  # Primary: the Render service the production frontend actually calls
   # (client/src/lib/detection.ts -> API_BASE_URL). Update both together
   # if the Render service is renamed.
   RENDER_HEALTH_URL: https://sentinal-yhe0.onrender.com/health
+  # Secondary: the Python inference backend (scene-relevance gate). Watched
+  # with a warning only — it is not user-facing yet. Flip it to
+  # RENDER_HEALTH_URL after switching the frontend to this service.
+  RENDER_PYTHON_HEALTH_URL: https://litter-detect-inference.onrender.com/health
 
 jobs:
   health-check:
@@ -26,13 +30,20 @@ jobs:
     steps:
       - name: Random jitter (0-4 minutes within the 10-minute window)
         run: sleep $((RANDOM % 240))
-      - name: Ping Render health endpoint
+      - name: Ping Render health endpoint (primary)
         run: |
           if curl --fail --silent --show-error --max-time 60 "$RENDER_HEALTH_URL" > /dev/null; then
             echo "Render /health ping succeeded."
           else
             echo "::error::Render /health ping failed ($RENDER_HEALTH_URL) — the inference service may be down, suspended, or starting."
             exit 1
+          fi
+      - name: Ping Python inference backend (secondary, warn only)
+        run: |
+          if curl --fail --silent --show-error --max-time 60 "$RENDER_PYTHON_HEALTH_URL" > /dev/null; then
+            echo "Python backend /health ping succeeded."
+          else
+            echo "::warning::Python backend /health ping failed ($RENDER_PYTHON_HEALTH_URL) — the scene-relevance gate is unreachable."
           fi
 
   heartbeat-commit:
