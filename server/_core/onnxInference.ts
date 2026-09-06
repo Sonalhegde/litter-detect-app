@@ -134,6 +134,160 @@ function nms(boxes: number[][], scores: number[], iouThreshold: number): number[
   return selected;
 }
 
+/**
+ * Read the class map from the ONNX model file's embedded metadata
+ * (`metadata_props` entry with key "names", written by Ultralytics as a
+ * Python dict literal), mirroring the Python backend's
+ * `_class_names_from_metadata`. onnxruntime-node does not expose model
+ * metadata, so we scan the protobuf bytes: locate key field 1 ("names"),
+ * then read value field 2's length-prefixed UTF-8 payload. Falls back to
+ * {0: "litter"} only when the metadata is missing or malformed.
+ */
+function extractNamesJsonFromOnnxBytes(buf: Buffer): string | null {
+  const needle = Buffer.concat([Buffer.from([0x0a, 0x05]), Buffer.from("names")]);
+  let pos = buf.indexOf(needle);
+  while (pos !== -1) {
+    let p = pos + needle.length;
+    if (buf[p] === 0x12) {
+      p += 1;
+      let len = 0;
+      let shift = 0;
+      while (p < buf.length) {
+        const b = buf[p];
+        p += 1;
+        len |= (b & 0x7f) << shift;
+        shift += 7;
+        if ((b & 0x80) === 0) break;
+      }
+      if (len > 0 && p + len <= buf.length) {
+        const candidate = buf.subarray(p, p + len).toString("utf8");
+        if (candidate.includes(":")) return candidate;
+      }
+    }
+    pos = buf.indexOf(needle, pos + 1);
+  }
+  return null;
+}
+
+function parseNamesDict(raw: string): Record<number, string> | null {
+  try {
+    const json = raw.replace(/'/g, '"').replace(/([{,]\s*)(\d+)\s*:/g, '$1"$2":');
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    const out: Record<number, string> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      const id = Number(key);
+      if (Number.isInteger(id) && id >= 0 && typeof value === "string") {
+        out[id] = value;
+      }
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+let classNamesCache: Record<number, string> | null = null;
+
+function resolveClassNames(modelPath: string): Record<number, string> {
+  if (classNamesCache) return classNamesCache;
+  try {
+    const raw = extractNamesJsonFromOnnxBytes(fs.readFileSync(modelPath));
+    const parsed = raw ? parseNamesDict(raw) : null;
+    if (parsed) {
+      classNamesCache = parsed;
+      return classNamesCache;
+    }
+  } catch {
+    // fall through to the safe default
+  }
+  return { 0: "litter" };
+}
+
+/**
+ * Ultralytics-exact letterbox preprocessing, replicating the Python pipeline
+ * (`_prepare_image_tensor` in backend/app/services/inference.py):
+ * - decode to RGB, drop alpha (PIL convert("RGB") semantics)
+ * - resize with BILINEAR interpolation using cv2's half-pixel-center
+ *   convention (`src = (dst + 0.5) * scale - 0.5`) — the model is brittle
+ *   enough that sharp's Lanczos default measurably changes detections
+ * - pad with RGB(114,114,114) at `round((target - size * gain) / 2 - 0.1)`
+ * - emit NCHW float32 in [0, 1]
+ */
+function resizeBilinearCv2(
+  src: Buffer,
+  srcW: number,
+  srcH: number,
+  dstW: number,
+  dstH: number
+): Buffer {
+  const dst = new Uint8ClampedArray(dstW * dstH * 3);
+  const scaleX = srcW / dstW;
+  const scaleY = srcH / dstH;
+  for (let dy = 0; dy < dstH; dy++) {
+    const fy = (dy + 0.5) * scaleY - 0.5;
+    const y0f = Math.floor(fy);
+    const wy = fy - y0f;
+    const y0 = Math.max(0, y0f);
+    const y1 = Math.min(srcH - 1, y0f + 1);
+    for (let dx = 0; dx < dstW; dx++) {
+      const fx = (dx + 0.5) * scaleX - 0.5;
+      const x0f = Math.floor(fx);
+      const wx = fx - x0f;
+      const x0 = Math.max(0, x0f);
+      const x1 = Math.min(srcW - 1, x0f + 1);
+      const i00 = (y0 * srcW + x0) * 3;
+      const i01 = (y0 * srcW + x1) * 3;
+      const i10 = (y1 * srcW + x0) * 3;
+      const i11 = (y1 * srcW + x1) * 3;
+      const o = (dy * dstW + dx) * 3;
+      for (let c = 0; c < 3; c++) {
+        dst[o + c] =
+          (1 - wy) * ((1 - wx) * src[i00 + c] + wx * src[i01 + c]) +
+          wy * ((1 - wx) * src[i10 + c] + wx * src[i11 + c]);
+      }
+    }
+  }
+  return Buffer.from(dst.buffer, dst.byteOffset, dst.byteLength);
+}
+
+async function prepareLetterboxTensor(
+  imageBuffer: Buffer,
+  targetSize: number
+): Promise<{ tensor: Float32Array; padX: number; padY: number; gain: number; imageWidth: number; imageHeight: number }> {
+  const { data: src, info } = await sharp(imageBuffer)
+    .removeAlpha()
+    .toColourspace("srgb")
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  if (info.channels !== 3) {
+    throw new Error(`Expected 3-channel RGB decode, got ${info.channels} channels.`);
+  }
+  const imageWidth = info.width;
+  const imageHeight = info.height;
+
+  const gain = Math.min(targetSize / imageHeight, targetSize / imageWidth);
+  const resizedW = Math.round(imageWidth * gain);
+  const resizedH = Math.round(imageHeight * gain);
+  // Ultralytics half-pixel bias: rounds .5 cases down (Python's round(x - 0.1))
+  const padX = Math.round((targetSize - imageWidth * gain) / 2 - 0.1);
+  const padY = Math.round((targetSize - imageHeight * gain) / 2 - 0.1);
+
+  const resized = resizeBilinearCv2(src, imageWidth, imageHeight, resizedW, resizedH);
+
+  const area = targetSize * targetSize;
+  const tensor = new Float32Array(3 * area).fill(114 / 255);
+  for (let y = 0; y < resizedH; y++) {
+    const srcRow = y * resizedW * 3;
+    const dstRow = (y + padY) * targetSize + padX;
+    for (let x = 0; x < resizedW; x++) {
+      tensor[dstRow + x] = resized[srcRow + x * 3] / 255.0;
+      tensor[area + dstRow + x] = resized[srcRow + x * 3 + 1] / 255.0;
+      tensor[2 * area + dstRow + x] = resized[srcRow + x * 3 + 2] / 255.0;
+    }
+  }
+  return { tensor, padX, padY, gain, imageWidth, imageHeight };
+}
+
 export async function runOnnxInference(
   imageBuffer: Buffer,
   modelId: string = "yolo26s",
@@ -143,48 +297,11 @@ export async function runOnnxInference(
   const startTime = Date.now();
   const session = await getSession();
 
-  const metadata = await sharp(imageBuffer).metadata();
-  const imageWidth = metadata.width || 800;
-  const imageHeight = metadata.height || 600;
-
+  const prepared = await prepareLetterboxTensor(imageBuffer, 320);
+  const { tensor: floatData, padX, padY, gain } = prepared;
+  const imageWidth = prepared.imageWidth;
+  const imageHeight = prepared.imageHeight;
   const targetSize = 320;
-  const gain = Math.min(targetSize / imageHeight, targetSize / imageWidth);
-  const resizedW = Math.round(imageWidth * gain);
-  const resizedH = Math.round(imageHeight * gain);
-
-  const padX = Math.round((targetSize - resizedW) / 2);
-  const padY = Math.round((targetSize - resizedH) / 2);
-
-  // Resize and letterbox image
-  const resizedImageBuffer = await sharp(imageBuffer)
-    .resize(resizedW, resizedH, { fit: "fill" })
-    .toBuffer();
-
-  const rawPixels: Buffer = await sharp({
-    create: {
-      width: targetSize,
-      height: targetSize,
-      channels: 3,
-      background: { r: 114, g: 114, b: 114 },
-    },
-  })
-    .composite([{ input: resizedImageBuffer, top: padY, left: padX }])
-    .raw()
-    .toBuffer();
-
-  // Convert to NCHW Float32 tensor normalized [0, 1]
-  const floatData = new Float32Array(1 * 3 * targetSize * targetSize);
-  const area = targetSize * targetSize;
-
-  for (let i = 0; i < area; i++) {
-    const r = rawPixels[i * 3];
-    const g = rawPixels[i * 3 + 1];
-    const b = rawPixels[i * 3 + 2];
-
-    floatData[i] = r / 255.0; // Red
-    floatData[area + i] = g / 255.0; // Green
-    floatData[2 * area + i] = b / 255.0; // Blue
-  }
 
   const ort = await loadOrtModule();
   const inputName = session.inputNames[0];
@@ -227,6 +344,7 @@ export async function runOnnxInference(
   }
 
   const selectedIndices = nms(candidateBoxes, candidateScores, iouThreshold);
+  const classNames = resolveClassNames(getModelPath());
 
   const detections: DetectionItem[] = selectedIndices.map((idx, detId) => {
     const box = candidateBoxes[idx];
@@ -245,7 +363,7 @@ export async function runOnnxInference(
 
     return {
       id: detId + 1,
-      class_name: "litter",
+      class_name: classNames[candidateClasses[idx]] ?? "litter",
       confidence: Math.round(score * 1000) / 1000,
       bbox: {
         x1: Math.round(x1 * 10) / 10,
@@ -257,6 +375,12 @@ export async function runOnnxInference(
   });
 
   const durationSec = Math.round((Date.now() - startTime) / 1000 * 1000) / 1000;
+
+  // Per-class counts from the actual detections
+  const classCounts = new Map<string, number>();
+  for (const det of detections) {
+    classCounts.set(det.class_name, (classCounts.get(det.class_name) ?? 0) + 1);
+  }
 
   // No scene-classification model runs in this deployment. Report the checker
   // as unavailable rather than fabricating a relevance verdict from pixel
@@ -270,10 +394,12 @@ export async function runOnnxInference(
     count: detections.length,
     inference_time_sec: durationSec,
     image_size: { width: imageWidth, height: imageHeight },
-    summary: [{ class_name: "litter", count: detections.length }],
+    summary: Array.from(classCounts.entries()).map(([class_name, count]) => ({ class_name, count })),
     runtime: {
       confidence_threshold: confThreshold,
-      per_class_thresholds: { litter: confThreshold },
+      per_class_thresholds: Object.fromEntries(
+        Object.values(classNames).map((name) => [name, confThreshold])
+      ),
       iou_threshold: iouThreshold,
       input_size: targetSize,
       device: "cpu",
