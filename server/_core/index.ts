@@ -90,7 +90,10 @@ async function startServer() {
           id: "yolo26s",
           label: "YOLO26s Marine Litter Detector",
           available: true,
-          classes: ["litter"],
+          classes: [
+            "plastic", "metal", "glass", "paper_cardboard",
+            "fishing_gear", "natural_debris", "other_litter",
+          ],
         },
       ],
     });
