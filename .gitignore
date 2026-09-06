@@ -124,13 +124,16 @@ htmlcov/
 # YOLO training/runtime products — keep only intentionally versioned source weights.
 backend/models/*
 !backend/models/MODELS.md
+!backend/models/TRAINING_LOG.md
 !backend/models/yolo26s.pt
 !backend/models/yolo26n.pt
 !backend/models/yolo26m.pt
 !backend/models/yolo26l.pt
 !backend/models/yolo26x.pt
+!backend/models/scene_text_embeddings.npz
 *.onnx
 !backend/models/yolo26s.onnx
+!backend/models/clip_vision_quantized.onnx
 *.engine
 *.tflite
 *.mlpackage

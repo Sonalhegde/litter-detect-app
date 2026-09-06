@@ -20,7 +20,7 @@ services:
       - key: YOLO26S_MODEL_PATH
         value: /app/models/yolo26s.onnx
       - key: YOLO26S_MODEL_SHA256
-        value: 969bbf4733dd1486478e55cbb511569dc0bb7a75cf889597274b02b336b3ceb2
+        value: b72f5cdef5451af4abb2d0051d9c95d0092e8a85f3cdf2fdb3d7644d6a56d6d7
       - key: YOLO26N_MODEL_PATH
         value: /app/models/yolo26n.pt
       - key: YOLO26M_MODEL_PATH

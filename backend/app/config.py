@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT_DIR / "models"
-DEFAULT_TRUSTED_YOLO26S_SHA256 = "969bbf4733dd1486478e55cbb511569dc0bb7a75cf889597274b02b336b3ceb2"
+DEFAULT_TRUSTED_YOLO26S_SHA256 = "b72f5cdef5451af4abb2d0051d9c95d0092e8a85f3cdf2fdb3d7644d6a56d6d7"
 # Scene-relevance checker artifacts: int8-quantized ONNX export of CLIP ViT-B/32
 # (Xenova/clip-vit-base-patch32 conversion of openai/clip-vit-base-patch32) plus
 # the pre-encoded prompt embeddings for the fixed prompt set. Runs on the
