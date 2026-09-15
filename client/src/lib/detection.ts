@@ -71,10 +71,16 @@ export class DetectionApiError extends Error {
 
 const defaultApiUrl = import.meta.env.DEV
   ? "/inference-api"
-  : "https://sentinal-yhe0.onrender.com";
-export const API_BASE_URL = (
-  import.meta.env.VITE_INFERENCE_API_URL || defaultApiUrl
-).replace(/\/$/, "");
+  : "https://litter-detect-inference.onrender.com";
+const apiUrl = import.meta.env.VITE_INFERENCE_API_URL || defaultApiUrl;
+if (import.meta.env.PROD && !import.meta.env.VITE_INFERENCE_API_URL) {
+  console.warn(
+    "[sentinel] VITE_INFERENCE_API_URL is not set in production; falling back to ",
+    defaultApiUrl,
+    ". Set this env var to override."
+  );
+}
+export const API_BASE_URL = apiUrl.replace(/\/$/, "");
 
 export function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;

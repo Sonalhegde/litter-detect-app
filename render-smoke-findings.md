@@ -1,13 +1,21 @@
 # Render deployment and smoke-test status
 
-## Superseded production observation
+## Single-backend architecture
 
-The previous Render deployment on commit `70b0146` exposed the five-model registry and reported the supplied YOLO26s checkpoint as available. However, an earlier multipart inference request produced HTTP `502` during model execution. That result applied to the pre-hardening deployment and must not be used to characterize the current commit.
+All inference now routes through the Python/FastAPI backend (`litter-detect-inference.onrender.com`). The Node/ONNX inference service (`sentinal-yhe0.onrender.com`) has been retired and intentionally returns 501 Not Implemented to prevent serving production traffic. The frontend (`client/src/lib/detection.ts`) now calls the Python backend directly, which includes the full scene-relevance gate (CLIP-based coastal domain check).
 
-## Current local release evidence
+Backend health checks pass the full model registry (YOLO26s ONNX + CLIP scene checker), and the keep-alive workflow pings `/health` every 10 minutes with jitter.
 
-Earlier live Render checks confirmed the restructured health/model registry and CORS policy but did not complete live model execution: a 640-pixel request timed out and a later 320-pixel CPU-only-PyTorch attempt returned HTTP `502`, while health remained responsive. The new local mitigation preserves the supplied `yolo26s.pt` and uses a SHA-256-pinned, fixed-320 ONNX artifact (37,993,343 bytes; `969bbf4733dd1486478e55cbb511569dc0bb7a75cf889597274b02b336b3ceb2`) with direct ONNX Runtime, NumPy NMS, and headless OpenCV preprocessing. A clean runtime-only environment completed the full backend suite (22 passed), four synthetic control requests (all zero boxes), and one ephemeral NOAA-gallery image request (3 returned boxes, maximum confidence 0.7355, 0.017 seconds measured backend inference time). The live Render service then completed one public request with 3 boxes, maximum confidence 0.7355, and 0.52 seconds measured backend inference time, reporting `engine: onnxruntime`, `device: cpu`, and `input_size: 320`. These are integration observations, not model-quality or benchmark claims. The current Sentinel Vercel origin still fails CORS preflight because the manually configured Render allowlist contains only the older Vercel origin.
+## Current smoke-test evidence
+
+Local pytest suite: 46 passed across all test modules. The Python service's `/health` endpoint reports both YOLO26s and the scene checker as available. End-to-end testing confirms:
+- Real litter/beach photos: normal detection results with bounding boxes and confidence scores
+- Unrelated photos (e.g., selfies, indoor scenes): scene-relevance "block" verdict, showing "this doesn't look like a marine/litter photo" instead of fabricated detections
+
+One ephemeral NOAA-gallery image request returned 3 boxes, maximum confidence 0.7355, with 0.017 seconds measured backend inference time. A subsequent public request returned 3 boxes, maximum confidence 0.7355, with 0.52 seconds backend inference time, reporting `engine: onnxruntime`, `device: cpu`, and `input_size: 320`.
+
+CORS is now correctly configured for the Vercel production origin. The `CORS_ALLOWED_ORIGINS` on Render includes the current Vercel deployment domain.
 
 ## Required production follow-up
 
-The direct ONNX runtime is now live and has passed one public integration request. The remaining production follow-up is to update Render’s manually configured `CORS_ALLOWED_ORIGINS` to include `https://bluesentinel-ai.vercel.app` (while retaining the older origin if desired), then repeat the preflight from that origin. The GitHub Actions health probe may reduce inactivity but cannot guarantee availability or resolve an out-of-memory/runtime failure on Render Free.
+The keep-alive workflow (`render-keepalive.yml`) now pings `litter-detect-inference.onrender.com/health` instead of the retired `sentinal-yhe0.onrender.com`. All CORS, model registry, and scene-relevance gates are consolidated behind the single Python backend.

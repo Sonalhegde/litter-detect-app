@@ -2,11 +2,10 @@ services:
   - type: web
     runtime: docker
     # This blueprint builds the PYTHON inference backend (backend/Dockerfile).
-    # It must keep the name of the dashboard's Python service
-    # (litter-detect-inference.onrender.com) so a blueprint sync updates that
-    # service instead of touching the separate Node service
-    # (sentinal-yhe0.onrender.com) the frontend currently calls. If you
-    # consolidate to a single backend, rename here AND update
+    # It keeps the name litter-detect-inference.onrender.com as the single
+    # source-of-truth for the inference API. The frontend
+    # (client/src/lib/detection.ts) now points here directly; no separate
+    # Node service exists. If the Render service is renamed, update
     # client/src/lib/detection.ts + .github/workflows/render-keepalive.yml.
     name: litter-detect-inference
     plan: free

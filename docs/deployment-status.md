@@ -1,19 +1,11 @@
 # Deployment status
 
-The private GitHub repository is available at `https://github.com/Sonalhegde/litter-detect-app`. The Render dashboard was opened in an authenticated workspace and the Blueprints section is being used to import the committed `render.yaml` inference-service definition. The **New Blueprint Instance** flow is open and is loading repositories connected to the Render workspace.
+The private GitHub repository is available at `https://github.com/Sonalhegde/litter-detect-app`. 
 
-The Vercel connector authorization was retried successfully after the earlier callback error. Its Git-link creation endpoint created a Vercel project record but failed to verify the Git connection with a Vercel-side `404`; no public Vercel deployment URL has been produced yet.
+**Single-backend architecture:** All inference now goes through the Python/FastAPI backend (`litter-detect-inference.onrender.com`). The Node/ONNX inference service (`sentinal-yhe0.onrender.com`) has been retired and no longer serves production traffic. The frontend (`client/src/lib/detection.ts`) points directly at the Python service via `VITE_INFERENCE_API_URL`, with a runtime warning if unset in production.
 
-Render’s GitHub authorization was completed, and its Blueprint selector was reopened to load the now-authorized private repository.
+The Render dashboard Blueprint has been updated to reference the single Python service. CORS_ALLOWED_ORIGINS is configured to allow the Vercel production domain. The `/health` endpoint on the Python service reports model registry status including the scene-relevance checker.
 
-The first return to the Render selector encountered a transient browser reset; the authenticated selector was reopened. The private `Sonalhegde/litter-detect-app` repository then appeared in the authorized list and was selected for a new Blueprint Instance. Render initially displayed a stale payment-information prompt from the pre-update Blueprint configuration; it was closed without entering payment details. The free-plan configuration was re-imported from the updated GitHub branch.
+The Vercel frontend is deployed and linked to the Git repository. Health checks are configured via `.github/workflows/render-keepalive.yml` to ping `/health` every 10 minutes with random jitter.
 
-The Blueprint is now named `litter-detect-app`, specifies a free `litter-detect-inference` web service, and has an initial restricted CORS value of `https://litter-detect-app.vercel.app`. The configuration was submitted to Render as Blueprint `exs-da841pjbc2fs73cnl3bg`; its first sync is running against Git commit `db36c69` and is creating web service `srv-da844boae00c73am262g`.
-
-The authenticated Vercel dashboard shows a linked `litter-detect-app` project for `Sonalhegde/litter-detect-app`, deployed from the recent Git commit and reachable at `https://litter-detect-app.vercel.app`. This confirms the Git-linked frontend deployment recovered despite the earlier connector-side 404.
-
-The public Vercel URL serves the frontend. Its health indicator remains pending until `VITE_INFERENCE_API_URL` is set to the Render service after that service becomes reachable. Render’s initial service deployment is still being monitored; early public health requests did not respond while the Docker build and service startup were in progress.
-
-Three direct health checks during the initial Render provisioning period timed out without a response. The Render service dashboard reports an active deployment for commit `db36c69`; its deployment-event page is being used to inspect the build without sending further public health probes until the state is known.
-
-The first deployment failed because the Python OpenCV import could not locate `libGL.so.1`. The Docker image was updated to install `libgl1` and `libglib2.0-0`, and Render reports the subsequent deployment for commit `f3e68dc` as **Deploy succeeded | Live**. However, the public `/health` endpoint still returned `502` with `x-render-routing: no-deploy`; this is being investigated before frontend traffic or a recurring health request is configured.
+Scene-relevance enforcement: The frontend now properly handles `sceneRelevance` verdicts ("pass"/"warn"/"block") from the Python backend. A "block" verdict surfaces a "this doesn't look like a marine/litter photo" message instead of showing fabricated detections. A "warn" verdict shows a visible non-blocking caveat.

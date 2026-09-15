@@ -14,12 +14,11 @@ permissions: {}
 
 env:
   # Primary: the Render service the production frontend actually calls
-  # (client/src/lib/detection.ts -> API_BASE_URL). Update both together
-  # if the Render service is renamed.
-  RENDER_HEALTH_URL: https://sentinal-yhe0.onrender.com/health
-  # Secondary: the Python inference backend (scene-relevance gate). Watched
-  # with a warning only — it is not user-facing yet. Flip it to
-  # RENDER_HEALTH_URL after switching the frontend to this service.
+  # (client/src/lib/detection.ts -> API_BASE_URL). Updated to litter-detect-inference
+  # after consolidating to the Python/FastAPI backend (step 1).
+  RENDER_HEALTH_URL: https://litter-detect-inference.onrender.com/health
+  # Secondary: the Python inference backend health — no longer the primary
+  # service URL, kept for historical awareness.
   RENDER_PYTHON_HEALTH_URL: https://litter-detect-inference.onrender.com/health
 
 jobs:

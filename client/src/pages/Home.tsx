@@ -292,7 +292,14 @@ export default function Home() {
           checkerAvailable: true,
         });
       }
-      setState(res.count > 0 ? "detection-complete" : "no-detection");
+      // If the scene-relevance verdict is "block", never show detection results
+      if (res.sceneRelevance.verdict === "block") {
+        setState("unrelated");
+      } else if (res.count > 0) {
+        setState("detection-complete");
+      } else {
+        setState("no-detection");
+      }
       void refreshHealth();
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;

@@ -112,68 +112,14 @@ async function startServer() {
     });
   });
 
-  // Detection endpoint using native ONNX Runtime (best.pt / yolo26s.onnx) neural network model inference
+  // Detection endpoint — retired; all inference is now handled by the Python/FastAPI backend
+  // (litter-detect-inference.onrender.com). Do not use this path — it intentionally
+  // returns a 501 Not Implemented to prevent serving production traffic by accident.
   app.post(["/v1/detections", "/api/detect/image"], upload.single("file"), async (req, res) => {
-    const file = req.file;
-    const model = (req.body?.model as string) || "yolo26s";
-
-    if (!file || !file.buffer) {
-      res.status(400).json({ detail: { code: "empty_file", message: "The selected image is empty." } });
-      return;
-    }
-
-    try {
-      // 1. Run real YOLO26s (best.pt) neural network model inference via onnxruntime-node
-      const { runOnnxInference } = await import("./onnxInference");
-      const result = await runOnnxInference(file.buffer, model);
-      res.json(result);
-      return;
-    } catch (onnxErr) {
-      console.error("Native ONNX inference error:", onnxErr);
-    }
-
-    // 2. Python CLI fallback if native node ONNX runtime is unavailable
-    const tmpDir = os.tmpdir();
-    const tmpPath = path.join(tmpDir, `sentinal_upload_${Date.now()}_${Math.random().toString(36).slice(2)}.tmp`);
-    try {
-      await fs.promises.writeFile(tmpPath, file.buffer);
-      const rootDir = path.resolve(import.meta.dirname, "../..");
-      const pythonExecs = [
-        path.join(rootDir, "backend", ".venv", "Scripts", "python.exe"),
-        path.join(rootDir, "backend", ".venv", "bin", "python"),
-        "python3",
-        "python",
-      ];
-      const scriptPath = path.join(rootDir, "backend", "run_inference.py");
-
-      for (const pyExec of pythonExecs) {
-        try {
-          const stdoutData = await new Promise<string>((resolve, reject) => {
-            execFile(pyExec, [scriptPath, tmpPath, model], { cwd: path.join(rootDir, "backend"), timeout: 15000 }, (err, stdout) => {
-              if (err || !stdout) reject(err);
-              else resolve(stdout);
-            });
-          });
-          if (stdoutData) {
-            const parsed = JSON.parse(stdoutData.trim());
-            if (!parsed.error) {
-              await fs.promises.unlink(tmpPath).catch(() => {});
-              res.json(parsed);
-              return;
-            }
-          }
-        } catch {
-          continue;
-        }
-      }
-      await fs.promises.unlink(tmpPath).catch(() => {});
-    } catch {}
-
-    // 3. No model result — report an honest failure. Never fabricate detections.
-    res.status(503).json({
+    res.status(501).json({
       detail: {
-        code: "model_unavailable",
-        message: "The detection model could not be run for this image. No results were produced.",
+        code: "inference_retired",
+        message: "Litter detection inference has been retired from this service. Use the Python/FastAPI backend at litter-detect-inference.onrender.com instead.",
       },
     });
   });
