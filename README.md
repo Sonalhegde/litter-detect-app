@@ -1,10 +1,8 @@
 # Sentinal
 
-A web tool for detecting litter in coastal photographs. Upload a shoreline image and a YOLO26s model finds litter in it, returning bounding boxes and confidence scores drawn over the image.
+A web tool for detecting litter in coastal photographs. Upload a shoreline image and a YOLO26s model finds litter in it, returning bounding boxes, class labels, and confidence scores drawn over the image.
 
-**Live demo:** [sentinal-theta.vercel.app](https://sentinal-theta.vercel.app)
-
-> The inference API runs on Render's free tier and spins down after inactivity. The first request after a quiet period can take 15–30 seconds to respond.
+This repository is configured for **local development** — no hosted deployment is required.
 
 ---
 
@@ -12,17 +10,18 @@ A web tool for detecting litter in coastal photographs. Upload a shoreline image
 
 ![Sentinal — marine litter detection platform](docs/screenshot.png)
 
-
+---
 
 ## What it does
 
-- Upload a JPEG, PNG, or WebP coastal photograph (up to 4 MB)
-- Sends the image to a FastAPI inference service
-- Runs a YOLO26s model fine-tuned to detect the `litter` class
+- Upload a JPEG, PNG, or WebP coastal photograph (up to **50 MB** locally; large high-resolution images supported)
+- Sends the image to a FastAPI inference service on your machine
+- Runs a checksum-pinned **YOLO26s** ONNX model (7 litter-type classes)
+- Optionally checks scene relevance (coastal/shoreline) before detection
 - Returns bounding boxes, confidence scores, and inference metadata
 - Draws the boxes as an SVG overlay on your image in the browser
 
-The model currently has **one class: litter**. It does not distinguish debris type (plastic, fabric, fishing gear, etc.). See [Limitations](#limitations).
+**Current classes:** `plastic`, `metal`, `glass`, `paper_cardboard`, `fishing_gear`, `natural_debris`, `other_litter`.
 
 ---
 
@@ -30,20 +29,21 @@ The model currently has **one class: litter**. It does not distinguish debris ty
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4 |
-| Backend | Python 3, FastAPI, Uvicorn |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Express dev shell |
+| Backend | Python 3.11+, FastAPI, Uvicorn |
 | Model runtime | ONNX Runtime (CPU), OpenCV, Pillow, NumPy |
-| Model | YOLO26s — custom fine-tuned checkpoint |
-| Frontend hosting | [Vercel](https://vercel.com) |
-| Inference API hosting | [Render](https://render.com) (free tier) |
+| Model | YOLO26s — multi-class marine-litter ONNX artifact (320×320 input) |
+| Scene gate | CLIP ViT-B/32 (quantized ONNX) |
+
+Historical Vercel/Render deployment files are archived in [`docs/deployment-archive/`](docs/deployment-archive/).
 
 ---
 
 ## How it works
 
-The browser sends the image as a multipart POST to the FastAPI service. The service validates the bytes with Pillow, letterbox-resizes the image to 320×320 (the model's declared input size), normalises pixel values to 0–1 float32, and runs the YOLO26s ONNX artifact via ONNX Runtime. The output tensor is filtered at a 25% confidence threshold, then non-maximum suppression is applied at IoU 0.45. Surviving box coordinates are unscaled back to the original image dimensions and returned as JSON. The browser draws the boxes as an SVG layer over the local image preview — the original file is never re-fetched.
+The browser sends the image as a multipart POST to the FastAPI service. The service validates bytes with Pillow (not filename or declared MIME alone), optionally scores scene relevance, letterbox-resizes to the model's declared input size (320×320 for the bundled ONNX), normalises pixels to float32, and runs inference via ONNX Runtime. Detections are filtered by per-class adaptive thresholds (contextual bandit) and non-maximum suppression (IoU 0.45). Box coordinates are mapped back to the original image dimensions and returned as JSON. The browser draws an SVG overlay — the original file is never re-fetched.
 
-For a more detailed breakdown, see the [Docs page](https://sentinal-theta.vercel.app/docs) on the live site.
+See also [`backend/README.md`](backend/README.md) for the inference API contract.
 
 ---
 
@@ -58,80 +58,103 @@ git clone https://github.com/Sonalhegde/litter-detect-app.git
 cd litter-detect-app
 ```
 
-**Start the inference API**
-
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-**Start the frontend** (in a second terminal, from the repo root)
-
-```bash
-pnpm install
-pnpm dev
-```
-
-The Vite dev server runs on `http://localhost:5173` and proxies `/inference-api` requests to the local backend. You do not need to set `VITE_INFERENCE_API_URL` for local development.
-
----
-
-## Environment variables
-
-Copy the example files and edit as needed:
+**Configure environment (optional but recommended)**
 
 ```bash
 cp client/.env.example client/.env
 cp backend/.env.example backend/.env
 ```
 
+**Install dependencies**
+
+```bash
+# Frontend
+pnpm install
+
+# Backend
+cd backend
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Start the inference API** (terminal 1)
+
+```bash
+cd backend
+# activate .venv first
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+**Start the frontend** (terminal 2, repo root)
+
+```bash
+# Windows PowerShell
+$env:NODE_ENV="development"; pnpm exec tsx watch server/_core/index.ts
+
+# macOS/Linux
+NODE_ENV=development pnpm dev
+```
+
+Open **http://localhost:3000**. The dev server proxies `/inference-api` → `http://127.0.0.1:8000`, so you do not need `VITE_INFERENCE_API_URL` for local development.
+
+---
+
+## Environment variables
+
 **Frontend** (`client/.env`)
-
-| Variable | Description |
-|---|---|
-| `VITE_INFERENCE_API_URL` | Backend origin for production deploys. Not needed locally. |
-
-**Backend** (`backend/.env`)
 
 | Variable | Default | Description |
 |---|---|---|
-| `CORS_ALLOWED_ORIGINS` | localhost + Vercel URLs | Comma-separated list of allowed browser origins. |
-| `YOLO26S_MODEL_PATH` | `models/yolo26s.onnx` | Path to the ONNX deployment artifact. |
-| `YOLO26S_MODEL_SHA256` | *(pinned value)* | SHA-256 of the ONNX artifact; verified on startup. |
-| `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25` | Minimum confidence for a detection to be returned. |
-| `INFERENCE_IOU_THRESHOLD` | `0.45` | IoU threshold for non-maximum suppression. |
-| `MAX_UPLOAD_MB` | `8` | Maximum accepted upload size in MB. |
-| `RATE_LIMIT_REQUESTS` | `6` | Max requests per client per rate-limit window. |
-| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Duration of the rate-limit window in seconds. |
+| `VITE_INFERENCE_API_URL` | `/inference-api` (dev) or `http://127.0.0.1:8000` (prod build) | Backend origin when not using the dev proxy. |
+
+**Backend** (`backend/.env`) — local defaults
+
+| Variable | Default | Description |
+|---|---|---|
+| `CORS_ALLOWED_ORIGINS` | `localhost` / `127.0.0.1` on ports 3000 and 5173 | Comma-separated browser-origin allowlist. |
+| `YOLO26S_MODEL_PATH` | `models/yolo26s.onnx` | Path to the trusted ONNX artifact. |
+| `YOLO26S_MODEL_SHA256` | pinned in `config.py` | SHA-256 integrity check before load. |
+| `INFERENCE_IMAGE_SIZE` | `1280` | Target side length when re-exporting ONNX; runtime uses the graph's fixed input until re-exported. |
+| `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25` | Global confidence floor. |
+| `INFERENCE_IOU_THRESHOLD` | `0.45` | NMS IoU threshold. |
+| `MAX_UPLOAD_MB` | `50` | Maximum upload file size. |
+| `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT` | `12000` each | Decoded dimension caps. |
+| `MAX_IMAGE_PIXELS` | `120000000` | Decoded pixel cap (~120 MP). |
+| `INFERENCE_CONCURRENCY` | logical CPU count | Max simultaneous ONNX runs. |
+| `RATE_LIMIT_ENABLED` | `false` | Set `true` to enable per-IP rate limiting. |
+| `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` | `120`, `60` | Used only when rate limiting is enabled. |
+
+Full table and checksum workflow: [`backend/README.md`](backend/README.md).
 
 ---
 
 ## Dataset and model
 
-The deployed model is a YOLO26s checkpoint fine-tuned to detect `litter` in coastal images. The exact source dataset for the current checkpoint was not included with the supplied weights, so a specific attribution cannot be confirmed.
+The deployed model is a YOLO26s checkpoint fine-tuned for marine litter in coastal images. The bundled ONNX artifact detects seven litter-type classes (see above).
 
-The next model will be trained on **BePLi v2** (Beach Plastic Litter v2), a dataset of annotated coastal photographs from beaches in Japan, covering multiple litter-type categories (plastic bottles, bags, styrofoam, fishing gear, and others).
+Future training targets **BePLi v2** (Beach Plastic Litter v2), annotated coastal photographs from beaches in Japan.
 
-**BePLi v2 licence: [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)** — non-commercial use only, attribution required, derivatives must use the same licence. This applies to the training data and to any model weights derived from it; it does not apply to the application code (see [License](#license) below).
+**BePLi v2 licence: [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)** — non-commercial use only, attribution required, derivatives must use the same licence. This applies to the training data and model weights derived from it; it does not apply to the application code (see [License](#license)).
 
 ---
 
 ## Limitations
 
-- **Single class.** The current model detects `litter` as one undifferentiated category. It does not identify material type, quantity by weight or volume, or classify a scene as "polluted" or "clean."
-- **Accuracy varies.** Detection quality depends on lighting, camera angle, subject distance, occlusion, image compression, and how closely the image resembles the training data. Partially submerged or very small objects are more likely to be missed.
-- **Zero detections ≠ no litter.** A result of zero means nothing crossed the 25% confidence threshold, not that the image is debris-free.
-- **Not validated for formal use.** This tool has not been validated for scientific research, environmental monitoring, regulatory reporting, or operational field decisions.
-- **Multi-class imbalance (upcoming).** Once the BePLi v2 model ships, per-class accuracy will vary because some litter categories appear far more often in the training data than others.
+- **Accuracy varies.** Detection quality depends on lighting, angle, distance, occlusion, compression, and similarity to training data. Small or partially submerged objects are easily missed.
+- **Fixed ONNX input size.** The bundled model runs at 320×320; re-export at a higher `imgsz` to improve small-object recall on very large photos.
+- **Zero detections ≠ no litter.** An empty result means nothing crossed the confidence threshold, not that the scene is debris-free.
+- **Not validated for formal use.** Not intended for regulatory reporting, scientific publication, or operational field decisions without independent validation.
+- **Per-class imbalance.** Some litter categories are rarer in training data and will have lower recall.
 
 ---
 
 ## Roadmap
 
-- **Multi-class litter detection** — training on BePLi v2 is in progress. When complete, the model will return specific litter-type labels (plastic bottle, bag, fishing gear, etc.) instead of a single `litter` class.
+- Higher-resolution ONNX export (1280+) for local/GPU setups
+- Additional YOLO26 variants (n/m/l/x) when verified checkpoints are available
+- BePLi v2 fine-tune for expanded class coverage
 
 ---
 
