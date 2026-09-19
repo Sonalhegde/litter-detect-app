@@ -1,15 +1,22 @@
 # Deployment archive
 
-These files supported Vercel + Render hosting. The project now runs **locally only**; nothing in the active dev runtime depends on this folder.
+Preserved artifacts from the **Vercel + Render** hosting setup. The active project runs locally; these files are **not used at runtime** until you follow [`../future-deploy.md`](../future-deploy.md).
 
-To redeploy later, restore paths from git history or copy artifacts back to the repo root (e.g. `render.yaml`, `.github/workflows/render-keepalive.yml`).
+## Files in this folder
 
-| File | Former purpose |
+| File | Purpose |
 | --- | --- |
-| `render.yaml` | Render Blueprint (512 MB / free-tier limits) |
-| `render-keepalive.yml` | GitHub Actions ping to avoid Render cold starts |
-| `keep-alive.md`, `deployment.md`, `deployment-status.md` | Hosted ops notes |
+| `vercel.json` | Vercel SPA build and rewrite config |
+| `render.yaml` | Render Blueprint (Docker backend, Free-tier env vars) |
+| `render-keepalive.yml` | GitHub Actions workflow to ping `/health` |
+| `client.env.production.example` | Production `VITE_INFERENCE_API_URL` template |
+| `backend.env.production.example` | Render production env template (limits + CORS) |
+| `deployment.md` | Original deployment overview |
+| `deployment-status.md` | Last known production architecture notes |
+| `keep-alive.md` | Cold-start mitigation runbook |
 | `render-smoke-findings.md` | Production smoke-test log |
-| `onnxInference.ts` | Retired Node/ONNX inference fallback |
+| `onnxInference.ts` | **Retired** Node ONNX fallback — reference only |
 
-Local defaults live in `backend/app/config.py` and `backend/.env.example`.
+## Restore checklist
+
+See **[`docs/future-deploy.md`](../future-deploy.md)** for step-by-step redeploy instructions.
