@@ -163,11 +163,7 @@ export default defineConfig({
   },
   envDir: path.resolve(import.meta.dirname, "client"),
   define: {
-    __RELEASE_SHA__: JSON.stringify(
-      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
-        process.env.GITHUB_SHA?.slice(0, 7) ??
-        "local",
-    ),
+    __RELEASE_SHA__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? "local"),
   },
   root: path.resolve(import.meta.dirname, "client"),
   publicDir: path.resolve(import.meta.dirname, "client", "public"),

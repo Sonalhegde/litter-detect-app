@@ -62,7 +62,7 @@ def _is_private_ip(ip_str: str) -> bool:
 def client_identifier(request: Request, trust_proxy_headers: bool | None = None) -> str:
     """
     Safely resolve client IP.
-    When running behind a trusted reverse proxy (e.g. Render), extract the client IP
+    When running behind a trusted reverse proxy, extract the client IP
     from X-Forwarded-For or X-Real-IP. Spoofed headers on untrusted direct connections are ignored.
     """
     direct_peer = request.client.host if request.client else ""

@@ -52,9 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.add_middleware(
         CORSMiddleware,
-        # Enforce the configured CORS_ALLOWED_ORIGINS allowlist (render.yaml /
-        # environment) instead of a blanket wildcard. parse_origins already
-        # falls back to safe defaults, so the list is never empty.
+        # Enforce the configured CORS_ALLOWED_ORIGINS allowlist instead of a wildcard.
         allow_origins=list(configured_settings.allowed_origins) or ["*"],
         allow_credentials=False,
         allow_methods=["*"],

@@ -18,8 +18,8 @@ breakdown and the full training history.
   at load time by `_class_names_from_metadata`
 - SHA-256: `b72f5cdef5451af4abb2d0051d9c95d0092e8a85f3cdf2fdb3d7644d6a56d6d7`
 - Size: 38,039,242 bytes
-- Pinned in `app/config.py` (`DEFAULT_TRUSTED_YOLO26S_SHA256`) and `render.yaml`
-  (`YOLO26S_MODEL_SHA256`); `ModelRegistry` refuses to load on mismatch.
+- Pinned in `app/config.py` (`DEFAULT_TRUSTED_YOLO26S_SHA256`) and `YOLO26S_MODEL_SHA256`
+  in `backend/.env`; `ModelRegistry` refuses to load on mismatch.
 
 ## Provenance checkpoint: `yolo26s.pt` (kept byte-preserved)
 
@@ -61,8 +61,8 @@ taxonomy: old `litter` feedback does not correspond to any single new class.
 
 ## Binary handling
 
-The `yolo26s.pt` and `yolo26s.onnx` binaries are deliberately ordinary Git objects so
-Render receives them without depending on a Git LFS checkout. Future large
+The `yolo26s.pt` and `yolo26s.onnx` binaries are ordinary Git objects (no LFS required).
+Future large
 `yolo26n/m/l/x` source checkpoints retain the project's LFS policy when and if they are
 supplied. Arbitrary generated exports and runtime weights remain ignored.
 

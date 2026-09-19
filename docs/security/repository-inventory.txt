@@ -1,8 +1,11 @@
 # Repository audit inventory
 
+> **Scope (2026):** Local-only project. Hosted-deployment files (`vercel.json`, `render.yaml`,
+> keep-alive workflow) were removed or moved to `docs/deployment-archive/`. This inventory
+> is a historical snapshot — regenerate after major structural changes.
+
 ## Git-tracked files
 .gitattributes
-.github/workflows/render-keepalive.yml
 .gitignore
 .gitkeep
 .prettierignore
@@ -156,7 +159,7 @@ shared/types.ts
 template.json
 todo.md
 tsconfig.json
-vercel.json
+# vercel.json — removed (local-only)
 vite.config.ts
 vitest.config.ts
 
@@ -257,7 +260,7 @@ client/src/pages/NotFound.tsx
 ./inference-backend/Dockerfile
 ./package.json
 ./pnpm-lock.yaml
-./render.yaml
+# ./render.yaml — moved to docs/deployment-archive/
 ./template.json
 ./tsconfig.json
-./vercel.json
+# ./vercel.json — removed (local-only)

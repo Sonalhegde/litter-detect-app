@@ -30,7 +30,7 @@ def _cpu_count() -> int:
 
 
 def _default_inference_concurrency() -> int:
-    # Render Free used 1; locally we allow one in-flight ONNX run per logical core.
+    # One in-flight ONNX run per logical core on the local machine.
     return max(1, _cpu_count())
 
 
@@ -148,7 +148,7 @@ def load_settings() -> Settings:
         inference_concurrency=inference_concurrency,
         onnx_intra_op_threads=get_int_env("ONNX_INTRA_OP_THREADS", default_intra, 1, 64),
         onnx_inter_op_threads=get_int_env("ONNX_INTER_OP_THREADS", 1, 1, 64),
-        # Public-demo rate limit (Render/Vercel); off by default for trusted local use.
+        # Optional rate limit for shared/multi-user setups; off by default on localhost.
         rate_limit_enabled=get_bool_env("RATE_LIMIT_ENABLED", False),
         rate_limit_requests=get_int_env("RATE_LIMIT_REQUESTS", 120, 1, 10_000),
         rate_limit_window_seconds=get_int_env("RATE_LIMIT_WINDOW_SECONDS", 60, 10, 3600),

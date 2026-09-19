@@ -1,28 +1,30 @@
 # Threat model and defensive controls
 
-This is a public research prototype that receives untrusted image uploads and runs a trusted local YOLO checkpoint. The main security objectives are preserving service availability, preventing arbitrary code/model loading, avoiding persistent storage of uploaded images, and preventing internal implementation details from crossing the HTTP boundary.
+> **Scope note:** Sentinal runs as a **local-only** application (browser + FastAPI on localhost). Threats that assume anonymous internet-wide abuse are marked **hosted N/A**; upload and resource-exhaustion controls remain fully in force.
 
-| Threat | Implemented control | Residual risk / next control |
+This tool receives untrusted image uploads and runs a trusted local YOLO checkpoint. Security objectives: prevent arbitrary code/model loading, avoid persistent storage of uploads, and prevent internal implementation details from crossing the HTTP boundary.
+
+| Threat | Implemented control | Residual risk / notes |
 | --- | --- | --- |
-| Filename, extension, or MIME spoofing | Pillow opens and verifies bytes; only decoded JPEG, PNG, and WebP formats are accepted. The server does not use the client filename for storage or paths. | Parser vulnerabilities remain possible; dependencies must remain patched. |
-| Oversized or compressed high-pixel input | Byte cap, content-length guard, width/height cap, pixel cap, decompression-bomb warning-as-error, and tests for compressed high-pixel PNGs. | A request without a correct `Content-Length` still reaches bounded application parsing before the byte-read cap. An edge request-size control should be added for high traffic. |
-| Public API exhaustion | A per-instance sliding-window limiter and an async semaphore of one model invocation are applied before inference. | Per-instance memory is not shared across scaled instances. Adopt a shared edge rate limiter for production traffic. |
-| Arbitrary checkpoint loading | Five static model identifiers are allowlisted; no request can provide a path or URL. Only the configured local YOLO26s checkpoint is checksum-verified before load. | PyTorch-style `.pt` loading remains a trusted-artifact operation. Do not accept user-supplied checkpoints. |
-| Internal information leakage | Typed success responses and safe error envelopes are used. Errors exclude tracebacks, local paths, headers, raw image bytes, and model internals. Request IDs support operator correlation. | Hosting-provider logs should be reviewed for retention and access control. |
-| Untrusted browser origins | CORS allows the stated Vercel origin and local development origins only, with credentials disabled. | CORS is not authentication. If the service becomes non-public, add application-layer authentication. |
-| Cross-site scripting through results | Results are rendered as React text and numeric SVG attributes; no untrusted HTML is injected. | Maintain this constraint if rich reports or user notes are added. |
+| Filename, extension, or MIME spoofing | Pillow opens and verifies bytes; only decoded JPEG, PNG, and WebP are accepted. Filenames are not used for storage paths. | Parser vulnerabilities remain possible; keep dependencies patched. |
+| Oversized or compressed high-pixel input | Byte cap, content-length guard, width/height cap, pixel cap, decompression-bomb warning-as-error, regression tests. | Still applies locally — a huge file can exhaust RAM on your machine. |
+| API exhaustion from unknown IPs **(hosted N/A)** | Optional sliding-window rate limit (`RATE_LIMIT_ENABLED`, default off) and asyncio semaphore for concurrent inference. | On localhost, abuse from arbitrary internet clients is **N/A**. Local concurrency limits still prevent accidental parallel overload. |
+| Arbitrary checkpoint loading | Five static model IDs; no request path/URL for weights. YOLO26s ONNX is checksum-verified before load. | Do not accept user-supplied checkpoints. |
+| Internal information leakage | Typed success responses and safe error envelopes; no tracebacks, paths, or raw bytes in HTTP responses. Request IDs for correlation. | Local server logs may still contain paths — review log retention on shared machines. |
+| Untrusted browser origins **(partially N/A)** | CORS allowlist defaults to `localhost` / `127.0.0.1` on ports 3000 and 5173. | Remote-origin drive-by abuse is **N/A** when not exposed to the internet. CORS still matters if you bind to `0.0.0.0` on a shared network. |
+| Cross-site scripting through results | Results rendered as React text and numeric SVG attributes; no untrusted HTML injection. | Maintain this constraint if rich reports are added. |
 
 ## Design rationale
 
-OWASP recommends defence in depth for file uploads, emphasizing content validation instead of trust in a client-supplied `Content-Type`, bounded size, filename safety, and cautious storage design. This service has no upload retrieval endpoint and does not persist request images, reducing the exposure created by user-controlled stored content. [1]
+OWASP file-upload guidance emphasizes content validation over trusting client `Content-Type`, bounded size, filename safety, and cautious storage. This service has no upload retrieval endpoint and does not persist request images. [1]
 
-Pillow documents `Image.open()` as a lazy operation and recommends treating its decompression-bomb warning as an error when appropriate; the service explicitly validates pixel bounds before allowing model execution. [2]
+Pillow recommends treating decompression-bomb warnings as errors; the service validates pixel bounds before model execution. [2]
 
-FastAPI response models validate and filter documented response fields. The API uses explicit Pydantic schemas for model, health, and detection responses to reduce accidental exposure of internal objects. [3]
+FastAPI/Pydantic response models filter documented fields to reduce accidental exposure. [3]
 
 ## Verification boundaries
 
-The test suite exercises malformed bytes, content-type deception, unsupported formats, traversal-like and Unicode filenames, long names, byte and decoded-pixel limits, CORS rejection, request rate limiting, invalid model IDs, unavailable models, method misuse, and safe error envelopes. It is not a substitute for an external penetration test, malware scanning program, formal compliance review, or production DDoS protection.
+The test suite exercises malformed bytes, content-type deception, unsupported formats, traversal-like filenames, byte and pixel limits, CORS rejection, optional rate limiting, invalid model IDs, unavailable models, and safe error envelopes. It is not a substitute for external penetration testing or formal compliance review.
 
 ## References
 

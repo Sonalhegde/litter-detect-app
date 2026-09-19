@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Thread caps below target small shared-CPU containers (historical Render Free).
+# Thread caps below target small shared-CPU containers (legacy Docker deploy only).
 # Local `uvicorn` runs ignore this file; tune ONNX via ONNX_INTRA_OP_THREADS instead.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

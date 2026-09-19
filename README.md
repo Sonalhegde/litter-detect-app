@@ -35,7 +35,7 @@ This repository is configured for **local development** — no hosted deployment
 | Model | YOLO26s — multi-class marine-litter ONNX artifact (320×320 input) |
 | Scene gate | CLIP ViT-B/32 (quantized ONNX) |
 
-Historical Vercel/Render deployment files are archived in [`docs/deployment-archive/`](docs/deployment-archive/).
+Legacy hosted-deployment notes (if ever needed again) live in [`docs/deployment-archive/`](docs/deployment-archive/).
 
 ---
 

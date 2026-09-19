@@ -224,7 +224,7 @@ export default function Home() {
       prepared = preparedResult.file;
       if (preparedResult.resized) {
         const fromMb = (preparedResult.originalSize / 1024 / 1024).toFixed(1);
-        setResizeNotice(`Image resized from ${fromMb} MB to fit the 8 MB upload limit.`);
+        setResizeNotice(`Image resized from ${fromMb} MB to fit the 50 MB upload limit.`);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -578,7 +578,7 @@ export default function Home() {
                     <span className="step-badge">01 &nbsp; SOURCE IMAGE</span>
                     <h2>Upload image</h2>
                   </div>
-                  <span className="panel-constraint">JPG, JPEG, PNG, WebP · max 8 MB</span>
+                  <span className="panel-constraint">JPG, JPEG, PNG, WebP · max 50 MB</span>
                 </div>
 
                 {state === "validating" && (

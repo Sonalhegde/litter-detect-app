@@ -1,6 +1,6 @@
 # Release audit results
 
-**Scope.** This record covers the reviewed repository state immediately before the ONNX runtime revision is pushed. It distinguishes locally verified controls from checks that require the external Vercel and Render deployments to complete after the push.
+**Scope.** Historical audit record from the hosted-deployment era. The project is now **local-only**; rows referencing live Vercel/Render deployments are **N/A** unless the app is redeployed (see `docs/deployment-archive/`).
 
 | Area | Evidence | Result |
 | --- | --- | --- |
@@ -13,10 +13,10 @@
 | Python dependencies | A clean environment installed the revised production requirements, `pip check` returned no broken requirements, and `pip-audit -r backend/requirements.txt` returned **No known vulnerabilities found**. The deployed request path no longer installs PyTorch, torchvision, or Ultralytics. | Pass |
 | Frontend tests and build | Type check passed; Vitest completed with **5 passed**; complete production build completed. | Pass |
 | JavaScript production dependencies | `pnpm audit --prod --json` reported zero advisory records and zero vulnerabilities after pruning unreachable Streamdown/Recharts template features and updating direct runtime dependencies. | Pass |
-| Local CORS | Allowed Vercel origin preflight returned `200` and `access-control-allow-origin`; untrusted origin returned `400` without that origin header. | Pass |
+| Local CORS | Allowed local origin preflight returned `200` and `access-control-allow-origin`; untrusted origin rejected. | Pass |
 | Controlled model smoke tests | The clean ONNX Runtime service processed black, white, gradient, and noisy images with zero boxes. An ephemeral NOAA-gallery search asset completed locally at 320-pixel input with 3 returned boxes, maximum reported confidence 0.7355, and 0.017 seconds measured backend inference time. See `external-verification-sources.md` for strict source and interpretation limits. | Pass; not a benchmark |
 | User attachments | Supplied images were screenshots, not standalone shoreline bytes; no screenshot was misrepresented as independent scene evidence. | Pass |
-| Live Render/Vercel | Render now serves the direct ONNX revision: `/health` and `/models` report YOLO26s available with n/m/l/x unavailable, and one public multipart request completed successfully with 3 boxes, maximum reported confidence 0.7355, 0.52 seconds measured backend inference time, `input_size: 320`, `device: cpu`, and `engine: onnxruntime`. The Git-linked Vercel page visibly reports `Release 923cbf6` and the current 4 MB copy. The current Vercel origin still fails CORS preflight because the manually configured Render allowlist contains only the older Vercel origin. | Pass with manual CORS follow-up |
+| Live hosted deployment **(N/A for local-only)** | Former Render/Vercel production checks. | **N/A** — archived; verify locally via `pytest -q` and `GET http://127.0.0.1:8000/health`. |
 
 ## Known non-blocking release notes
 

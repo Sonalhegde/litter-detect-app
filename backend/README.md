@@ -62,11 +62,11 @@ Copy `backend/.env.example` to `backend/.env` and adjust if needed. Do not commi
 | `MAX_IMAGE_PIXELS` | `120000000` | Decoded pixel cap (~120 MP). |
 | `INFERENCE_CONCURRENCY` | logical CPU count | Max simultaneous ONNX runs (`asyncio.Semaphore`). |
 | `ONNX_INTRA_OP_THREADS`, `ONNX_INTER_OP_THREADS` | `cpu_count // concurrency`, `1` | ONNX Runtime thread pools per session. |
-| `RATE_LIMIT_ENABLED` | `false` | Set `true` to re-enable hosted-demo rate limiting. |
+| `RATE_LIMIT_ENABLED` | `false` | Set `true` to enable optional per-IP rate limiting. |
 | `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` | `120`, `60` | Used only when rate limiting is enabled. |
 | `TRUST_PROXY_HEADERS` | `false` | Enable only behind a trusted reverse proxy. |
 
-Historical Render/Vercel deployment files are archived under `docs/deployment-archive/`.
+Legacy hosted-deployment notes are archived under `docs/deployment-archive/` (not used by the local runtime).
 
 ## Runtime engine
 

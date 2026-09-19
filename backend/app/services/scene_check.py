@@ -21,8 +21,7 @@ Model loading
 -------------
 The vision tower of CLIP ViT-B/32 runs as an int8-quantized ONNX export
 (``clip_vision_quantized.onnx``) on the onnxruntime already required by the
-detector — no torch/open_clip dependency, so the checker fits Render Free's
-memory budget. The text tower is not needed at runtime: the prompt embeddings
+detector — no torch/open_clip dependency. The text tower is not needed at runtime: the prompt embeddings
 for the fixed prompt set are pre-encoded once at build time and shipped as
 ``scene_text_embeddings.npz``.
 

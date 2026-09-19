@@ -104,13 +104,12 @@ function SectionContent({ id, classes }: { id: SectionId; classes: string[] }) {
             <strong>{classText}</strong> in coastal and marine photographs. YOLO26s is part of the
             Ultralytics YOLO26 family, a one-stage object detector with a lighter detection head,
             DFL-free box regression, and an end-to-end (NMS-free) inference path. At 9.5M fused
-            parameters it runs on CPU within Render's free-tier memory constraints.
+            parameters it runs on CPU via ONNX Runtime on your machine.
           </p>
           <p>
-            For the Render deployment, the supplied <code>.pt</code> checkpoint was exported to a
-            fixed-320 ONNX artifact. This lets the service use ONNX Runtime directly without
-            loading PyTorch or Ultralytics in the request path, which reduces cold-start time and
-            peak memory. The artifact is SHA-256 pinned and verified on load.
+            The supplied checkpoint was exported to a fixed-320 ONNX artifact. This lets the
+            service use ONNX Runtime directly without loading PyTorch or Ultralytics in the
+            request path. The artifact is SHA-256 pinned and verified on load.
           </p>
           <p>
             Active detection classes: <strong>{classText}</strong>.
@@ -156,11 +155,10 @@ function SectionContent({ id, classes }: { id: SectionId; classes: string[] }) {
         <div className="docs-section-body">
           <h3>API reference</h3>
           <p>
-            The inference service runs at{" "}
-            <code>https://litter-detect-inference.onrender.com</code> on Render's free tier.
-            After a period of inactivity the instance spins down; the first request after that
-            can take 10–30 seconds to respond while it wakes up. Subsequent requests within the
-            same activity window are faster.
+            The inference service runs locally at{" "}
+            <code>{API_BASE_URL}</code> (FastAPI on port 8000 by default). When using the
+            dev server at <code>http://localhost:3000</code>, browser requests go through the{" "}
+            <code>/inference-api</code> proxy to the backend.
           </p>
 
           <p><strong>Service status</strong></p>
@@ -186,7 +184,7 @@ Content-Type: multipart/form-data
 file   — JPEG, PNG, or WebP image (required)
 model  — model ID (optional; default: yolo26s)`}</code></pre>
 
-          <pre><code>{`curl -X POST https://litter-detect-inference.onrender.com/v1/detections \\
+          <pre><code>{`curl -X POST ${API_BASE_URL}/v1/detections \\
   -F "file=@beach.jpg" \\
   -F "model=yolo26s"`}</code></pre>
 
@@ -297,7 +295,7 @@ model  — model ID (optional; default: yolo26s)`}</code></pre>
             <p className="credit-name">Tech stack</p>
             <p>
               Built with React, Vite, TypeScript, FastAPI, ONNX Runtime, Pillow, and OpenCV.
-              Deployed on Vercel (frontend) and Render (inference API).
+              Runs entirely on your machine — no hosted deployment required.
             </p>
           </div>
         </div>
