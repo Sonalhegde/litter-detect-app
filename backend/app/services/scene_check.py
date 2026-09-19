@@ -204,8 +204,8 @@ class SceneChecker:
                 import onnxruntime as ort
 
                 session_options = ort.SessionOptions()
-                session_options.intra_op_num_threads = 1
-                session_options.inter_op_num_threads = 1
+                session_options.intra_op_num_threads = self._settings.onnx_intra_op_threads
+                session_options.inter_op_num_threads = self._settings.onnx_inter_op_threads
                 session_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
                 session = ort.InferenceSession(
                     str(vision_path), sess_options=session_options, providers=["CPUExecutionProvider"]

@@ -32,7 +32,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         registry = ModelRegistry(configured_settings)
         app.state.model_registry = registry
         app.state.inference_service = InferenceService(configured_settings, registry)
-        app.state.rate_limiter = SlidingWindowRateLimiter(configured_settings.rate_limit_requests, configured_settings.rate_limit_window_seconds)
+        app.state.rate_limiter = SlidingWindowRateLimiter(
+            configured_settings.rate_limit_requests,
+            configured_settings.rate_limit_window_seconds,
+            enabled=configured_settings.rate_limit_enabled,
+        )
         # Bandit registry: loads persisted weights from SQLite on startup
         app.state.bandit_registry = BanditRegistry()
         # Scene checker: ONNX CLIP ViT-B/32 relevance gate; loads lazily on first

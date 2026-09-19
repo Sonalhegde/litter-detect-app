@@ -71,15 +71,8 @@ export class DetectionApiError extends Error {
 
 const defaultApiUrl = import.meta.env.DEV
   ? "/inference-api"
-  : "https://litter-detect-inference.onrender.com";
+  : "http://127.0.0.1:8000";
 const apiUrl = import.meta.env.VITE_INFERENCE_API_URL || defaultApiUrl;
-if (import.meta.env.PROD && !import.meta.env.VITE_INFERENCE_API_URL) {
-  console.warn(
-    "[sentinel] VITE_INFERENCE_API_URL is not set in production; falling back to ",
-    defaultApiUrl,
-    ". Set this env var to override."
-  );
-}
 export const API_BASE_URL = apiUrl.replace(/\/$/, "");
 
 export function formatPercent(value: number) {
@@ -102,8 +95,8 @@ export function formatDuration(seconds: number) {
 }
 
 // ── Image compression (client-side) ───────────────────────────────────────────
-const UPLOAD_TARGET_BYTES = 8 * 1024 * 1024;   // 8 MB target
-const UPLOAD_HARD_LIMIT   = 35 * 1024 * 1024;  // 35 MB hard ceiling (wrong file)
+const UPLOAD_TARGET_BYTES = 50 * 1024 * 1024;  // match backend MAX_UPLOAD_MB default
+const UPLOAD_HARD_LIMIT   = 512 * 1024 * 1024; // reject non-photo files, not normal camera JPEGs
 const COMPRESS_QUALITY    = 0.85;               // first-pass JPEG/WebP quality
 
 export type CompressResult =
@@ -120,7 +113,7 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
   if (raw.size <= UPLOAD_TARGET_BYTES) return { file: raw, resized: false };
   if (raw.size > UPLOAD_HARD_LIMIT) {
     throw new Error(
-      "This file is too large to be a normal photo (over 35 MB). Choose a different image."
+      "This file is too large to be a normal photo (over 512 MB). Choose a different image."
     );
   }
 
@@ -160,7 +153,7 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
 
   if (!blob || blob.size > UPLOAD_TARGET_BYTES) {
     throw new Error(
-      "Could not compress this image to under 8 MB. Try a smaller or less complex image."
+      "Could not compress this image to under 50 MB. Try a smaller or less complex image."
     );
   }
 
@@ -239,7 +232,7 @@ async function parseError(response: Response): Promise<DetectionApiError> {
 
   let defaultMsg = `The detection service returned HTTP ${status}.`;
   if (status === 429) defaultMsg = "Too many requests. Please wait a minute before trying again.";
-  else if (status === 413) defaultMsg = "The image file is too large for the backend limit (8 MB). Please choose a smaller file.";
+  else if (status === 413) defaultMsg = "The image file is too large for the backend upload limit. Please choose a smaller file.";
   else if (status >= 500) defaultMsg = `The detection service returned server error (${status}). The service may be restarting or out of memory.`;
 
   try {

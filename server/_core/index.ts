@@ -112,14 +112,12 @@ async function startServer() {
     });
   });
 
-  // Detection endpoint — retired; all inference is now handled by the Python/FastAPI backend
-  // (litter-detect-inference.onrender.com). Do not use this path — it intentionally
-  // returns a 501 Not Implemented to prevent serving production traffic by accident.
+  // Detection endpoint — retired on the Node dev shell; use the Python/FastAPI backend (port 8000).
   app.post(["/v1/detections", "/api/detect/image"], upload.single("file"), async (req, res) => {
     res.status(501).json({
       detail: {
         code: "inference_retired",
-        message: "Litter detection inference has been retired from this service. Use the Python/FastAPI backend at litter-detect-inference.onrender.com instead.",
+        message: "Litter detection runs on the Python/FastAPI backend. Start uvicorn on port 8000 or use the /inference-api dev proxy.",
       },
     });
   });

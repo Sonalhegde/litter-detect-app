@@ -10,16 +10,26 @@ from fastapi import Request
 
 
 class SlidingWindowRateLimiter:
-    """Small in-memory per-client limiter suitable for a single public demo instance."""
+    """Small in-memory per-client limiter for optional public-demo protection."""
 
-    def __init__(self, limit: int, window_seconds: int, max_clients: int = 10_000) -> None:
+    def __init__(
+        self,
+        limit: int,
+        window_seconds: int,
+        max_clients: int = 10_000,
+        *,
+        enabled: bool = True,
+    ) -> None:
         self.limit = limit
         self.window_seconds = window_seconds
         self.max_clients = max_clients
+        self.enabled = enabled
         self._events: dict[str, deque[float]] = {}
         self._lock = threading.Lock()
 
     def retry_after(self, client_id: str) -> int | None:
+        if not self.enabled or self.limit <= 0:
+            return None
         now = time.monotonic()
         with self._lock:
             events = self._events.setdefault(client_id, deque())

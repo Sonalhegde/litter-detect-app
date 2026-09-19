@@ -86,7 +86,7 @@ class ModelRegistry:
                 entries.append(ModelStatus(id=spec.id, label=spec.label, available=False, detail="Trusted checkpoint integrity verification failed.", classes=[]))
                 continue
             if not present:
-                detail = f"Checkpoint is not installed. Add {spec.path.name} through the deployment configuration."
+                detail = f"Checkpoint is not installed. Add {spec.path.name} under backend/models/ (or set {spec.id.upper()}_MODEL_PATH)."
             elif spec.id in self._load_errors:
                 detail = "Trusted deployment artifact could not be loaded."
             elif spec.id == "yolo26s" and spec.path.suffix.lower() == ".onnx":
@@ -117,8 +117,8 @@ class ModelRegistry:
                     import onnxruntime as ort
 
                     session_options = ort.SessionOptions()
-                    session_options.intra_op_num_threads = 1
-                    session_options.inter_op_num_threads = 1
+                    session_options.intra_op_num_threads = self.settings.onnx_intra_op_threads
+                    session_options.inter_op_num_threads = self.settings.onnx_inter_op_threads
                     session_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
                     self._models[model_id] = ort.InferenceSession(str(spec.path), sess_options=session_options, providers=["CPUExecutionProvider"])
                 except Exception as exc:

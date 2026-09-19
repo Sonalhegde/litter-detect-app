@@ -41,7 +41,8 @@ class FakeInferenceService:
 
 
 @pytest.fixture
-def client(tmp_path):  # type: ignore[no-untyped-def]
+def client(tmp_path, monkeypatch):  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("BANDIT_DB_PATH", str(tmp_path / "bandit.db"))
     settings = replace(
         load_settings(),
         allowed_origins=("https://allowed.example",),
@@ -59,8 +60,11 @@ def client(tmp_path):  # type: ignore[no-untyped-def]
         max_image_width=200,
         max_image_height=200,
         max_image_pixels=20_000,
+        rate_limit_enabled=True,
         rate_limit_requests=4,
         rate_limit_window_seconds=60,
+        onnx_intra_op_threads=1,
+        onnx_inter_op_threads=1,
     )
     app = create_app(settings)
     with TestClient(app) as test_client:

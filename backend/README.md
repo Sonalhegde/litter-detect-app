@@ -1,18 +1,17 @@
 # Sentinal inference backend
 
-This directory is the independently deployable FastAPI inference service for **Sentinal — Marine Debris Detection Platform**. It serves only the supplied, trusted **YOLO26s** model through a checksum-pinned ONNX artifact derived from the preserved supplied checkpoint. The public API never accepts a model path or a model file from a browser; a request can only choose one of the fixed `yolo26n/s/m/l/x` identifiers, and only YOLO26s is currently installed.
+FastAPI inference service for **Sentinal — Marine Debris Detection Platform**. It serves the checksum-pinned **YOLO26s** ONNX artifact and optional additional YOLO26 variants when their checkpoints are present under `models/`. Clients choose only allowlisted model IDs (`yolo26n/s/m/l/x`); filesystem paths and user-supplied weights are never accepted.
 
 ## Structure
 
 | Path | Purpose |
 | --- | --- |
-| `app/api/` | Thin HTTP routes for service status, model availability, and image detection. |
-| `app/schemas/` | Pydantic response contracts, including safe error and runtime metadata models. |
-| `app/services/` | Trusted image decoding, request rate limiting, model integrity verification, and serialized inference. |
-| `app/core/` | Request IDs and privacy-conscious route-level audit logging. |
-| `models/yolo26s.pt` | The supplied checkpoint, preserved byte-for-byte and retained as the source artifact. |
-| `models/yolo26s.onnx` | The checksum-pinned, fixed-320 deployment artifact derived from the supplied YOLO26s checkpoint. |
-| `tests/` | API, upload-security, CORS, rate-limit, settings, and integrity regression tests. |
+| `app/api/` | HTTP routes for health, model availability, relevance, and detection. |
+| `app/schemas/` | Pydantic response contracts and safe error envelopes. |
+| `app/services/` | Image decoding, optional rate limiting, model integrity checks, ONNX inference. |
+| `app/core/` | Request IDs and privacy-conscious audit logging. |
+| `models/yolo26s.onnx` | Checksum-pinned deployment artifact (currently exported at 320×320 input). |
+| `tests/` | API, upload-security, CORS, rate-limit, settings, and integrity tests. |
 
 ## Public HTTP contract
 
@@ -20,75 +19,64 @@ This directory is the independently deployable FastAPI inference service for **S
 | --- | --- | --- |
 | `GET` | `/` | Minimal service identity check. |
 | `GET` | `/health` | Service health and five-model availability. |
-| `GET` | `/models` and `/api/model` | Five-model registry, including truthfully unavailable variants. |
-| `POST` | `/v1/detections` and `/api/detect/image` | JPEG, PNG, or WebP multipart image detection with `file` and optional `model` fields. |
-| `GET` | `/docs` | Framework-generated OpenAPI documentation. |
+| `GET` | `/models` and `/api/model` | Model registry (uninstalled variants report `available: false`). |
+| `POST` | `/v1/detections` and `/api/detect/image` | JPEG, PNG, or WebP multipart detection with `file` and optional `model`. |
+| `GET` | `/docs` | OpenAPI documentation. |
 
-All client failures use a safe envelope such as `{"success": false, "error": {"code": "invalid_image", "message": "…"}, "request_id": "…"}`. Tracebacks, filesystem paths, headers, credentials, model tensors, and raw image bytes are not returned.
+## Defensive controls (retained)
 
-## Defensive controls
+- Pillow-based decode and format verification (not filename/MIME alone).
+- Upload byte, decoded dimension, and pixel caps (relaxed for local use; see defaults below).
+- SHA-256 integrity pin for the trusted YOLO26s ONNX artifact before load.
+- CLIP-based scene-relevance gate (optional degradation when artifacts missing).
+- ONNX Runtime + OpenCV letterbox + NumPy NMS (no PyTorch in the default path — keeps dependencies small; optional `.pt` checkpoints for n/m/l/x are not bundled).
 
-The service validates image bytes with Pillow rather than trusting the filename or declared MIME type. It accepts only verified JPEG, PNG, and WebP content; limits upload bytes, decoded width, decoded height, and decoded pixels; normalizes pixels in memory; then closes the upload object. It does not persist uploaded images.
-
-Public inference is serialized by default and protected by a small per-instance request window. This guard provides a reasonable public-demonstration control but is not a substitute for a shared, edge-enforced rate limiter when the service scales to several instances. The trusted YOLO26s deployment artifact is checksum-verified before model loading. The service calls ONNX Runtime directly with explicit OpenCV letterboxing and NumPy non-maximum suppression, so it does not import PyTorch or Ultralytics in the deployed request path. The source `.pt` file is retained only as the supplied controlled artifact; user-supplied checkpoints are never supported.
-
-## Local setup and verification
-
-Install the pinned production dependencies in an isolated environment, then run the service from this directory.
+## Local setup
 
 ```bash
+cd backend
 python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt pytest pip-audit bandit
+# Windows: .venv\Scripts\activate
+# Unix: source .venv/bin/activate
+python -m pip install -r requirements.txt pytest
 pytest -q
-python -m compileall -q app tests
-uvicorn app.main:app --host 127.0.0.1 --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-For a local browser, set `VITE_INFERENCE_API_URL=http://127.0.0.1:8000` in the frontend environment, or use the configured development proxy. Do not commit literal credentials or an `.env` file.
+From the repo root, start the frontend with `pnpm dev` (Express + Vite on port 3000). The dev server proxies `/inference-api` to `127.0.0.1:8000`.
 
-## Environment configuration
+Copy `backend/.env.example` to `backend/.env` and adjust if needed. Do not commit secrets or `.env`.
 
-The deployment requirements use `onnxruntime`, NumPy, and headless OpenCV rather than PyTorch, torchvision, or Ultralytics. This reduces the Render Free container’s heavyweight model-runtime dependency surface; it does not remove the free service’s CPU, memory, cold-start, or 180-second request constraints.
+## Environment configuration (local defaults)
 
-| Variable | Default | Purpose |
+| Variable | Local default | Purpose |
 | --- | --- | --- |
-| `CORS_ALLOWED_ORIGINS` | local origins plus the production Vercel origin | Comma-separated browser-origin allowlist. |
-| `YOLO26S_MODEL_PATH` | `models/yolo26s.onnx` | Trusted derived deployment artifact path. |
-| `YOLO26S_MODEL_SHA256` | derived artifact fingerprint | Integrity pin for the trusted deployment artifact. |
-| `INFERENCE_IMAGE_SIZE` | `960` locally, `320` on Render | Input-side inference resolution; lower production resolution reduces free-instance memory pressure. |
-| `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25` | Confidence floor for detections. |
-| `INFERENCE_IOU_THRESHOLD` | `0.45` | IoU setting supplied to the detector. |
-| `MAX_UPLOAD_MB` | `10` locally, `8` on Render | Maximum accepted image file size. |
-| `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT` | `6000` locally, `3000` on Render | Safe decoded-image dimension caps. |
-| `MAX_IMAGE_PIXELS` | `20000000` locally, `6000000` on Render | Safe decoded-image pixel cap. |
-| `INFERENCE_CONCURRENCY` | `1` | Maximum simultaneous model execution per instance. |
-| `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` | `6`, `60` | Per-instance public-demo request budget. |
+| `CORS_ALLOWED_ORIGINS` | `localhost` / `127.0.0.1` on ports **3000** and **5173** | Browser CORS allowlist. |
+| `YOLO26S_MODEL_PATH` | `models/yolo26s.onnx` | Trusted ONNX artifact path. |
+| `YOLO26S_MODEL_SHA256` | pinned digest in `config.py` | Integrity verification before load. |
+| `INFERENCE_IMAGE_SIZE` | `1280` | Target side length when **re-exporting** YOLO ONNX; runtime uses the graph's fixed input (320 for the bundled artifact) until a new file is installed. |
+| `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25` | Global confidence floor (bandit may raise per class). |
+| `INFERENCE_IOU_THRESHOLD` | `0.45` | NMS IoU threshold. |
+| `MAX_UPLOAD_MB` | `50` | Max upload file size (guard against accidental huge files). |
+| `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT` | `12000` each | Decoded dimension cap per side. |
+| `MAX_IMAGE_PIXELS` | `120000000` | Decoded pixel cap (~120 MP). |
+| `INFERENCE_CONCURRENCY` | logical CPU count | Max simultaneous ONNX runs (`asyncio.Semaphore`). |
+| `ONNX_INTRA_OP_THREADS`, `ONNX_INTER_OP_THREADS` | `cpu_count // concurrency`, `1` | ONNX Runtime thread pools per session. |
+| `RATE_LIMIT_ENABLED` | `false` | Set `true` to re-enable hosted-demo rate limiting. |
+| `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` | `120`, `60` | Used only when rate limiting is enabled. |
+| `TRUST_PROXY_HEADERS` | `false` | Enable only behind a trusted reverse proxy. |
 
-Successful detection responses include `runtime.engine: "onnxruntime"` and `runtime.device: "cpu"` so clients can distinguish the deployed engine from model-family availability.
+Historical Render/Vercel deployment files are archived under `docs/deployment-archive/`.
 
-## Checksum-Pinning & Model Replacement Workflow
+## Runtime engine
 
-The backend SHA-256 checksum-pins the deployed `yolo26s.onnx` artifact to ensure integrity before loading model tensors into memory.
+The service uses **ONNX Runtime on CPU** by default. PyTorch/Ultralytics (and CUDA) were not added: only `yolo26s.onnx` is shipped today, and re-export at higher `imgsz` is the supported path to better accuracy without pulling in torch. Drop additional verified `.onnx` files for n/m/l/x under `models/` to enable those IDs.
 
-When replacing or updating the `yolo26s` checkpoint with a new model (e.g., a fine-tuned multi-class checkpoint):
+## Checksum pinning when replacing YOLO26s
 
-1. **Compute SHA-256 Digest**:
-   Compute the SHA-256 checksum of the new `.onnx` file:
-   ```bash
-   sha256sum models/yolo26s.onnx
-   # or in PowerShell:
-   Get-FileHash models/yolo26s.onnx -Algorithm SHA256
-   ```
+```bash
+# PowerShell
+Get-FileHash models/yolo26s.onnx -Algorithm SHA256
+```
 
-2. **Update Configuration Pins**:
-   - Update `DEFAULT_TRUSTED_YOLO26S_SHA256` in `backend/app/config.py`.
-   - Update `YOLO26S_MODEL_SHA256` in `render.yaml` (and set the corresponding environment variable in the Render dashboard).
-
-3. **Verify Model Status**:
-   Start the service locally and verify that `GET /models` reports `yolo26s` as `available: true` with your new class names in `classes`.
-
-> **Note on other model variants (`yolo26n`, `yolo26m`, `yolo26l`, `yolo26x`)**:
-> Currently, `yolo26s` is the primary checksum-pinned production model. Once genuine fine-tuned checkpoints are supplied for `yolo26n/m/l/x`, they should receive identical SHA-256 checksum-pinning fields in `config.py` and `render.yaml` (`YOLO26N_MODEL_SHA256`, etc.) and be verified in `ModelRegistry._trusted_yolo26s_present()` before loading.
-
+Update `DEFAULT_TRUSTED_YOLO26S_SHA256` in `app/config.py` and `YOLO26S_MODEL_SHA256` in your `.env`.

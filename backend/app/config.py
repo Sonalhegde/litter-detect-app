@@ -16,14 +16,22 @@ DEFAULT_RELEVANCE_VISION_MODEL_NAME = "clip_vision_quantized.onnx"
 DEFAULT_RELEVANCE_EMBEDDINGS_NAME = "scene_text_embeddings.npz"
 DEFAULT_RELEVANCE_VISION_SHA256 = "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299"
 DEFAULT_RELEVANCE_EMBEDDINGS_SHA256 = "a770421670028ce9d29ac3ba09b9376e18ed7144e59d6636c1ddfe416827a615"
+# Local dev origins only (Express+Vite on :3000, standalone Vite on :5173).
 DEFAULT_ALLOWED_ORIGINS = (
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://bluesentinel-ai.vercel.app",
-    "https://sentinalapp.vercel.app",
-    "https://litter-detect-app.vercel.app",
-    "https://sentinal-theta.vercel.app",
 )
+
+
+def _cpu_count() -> int:
+    return os.cpu_count() or 4
+
+
+def _default_inference_concurrency() -> int:
+    # Render Free used 1; locally we allow one in-flight ONNX run per logical core.
+    return max(1, _cpu_count())
 
 
 def parse_origins(raw_value: str | None) -> tuple[str, ...]:
@@ -31,6 +39,13 @@ def parse_origins(raw_value: str | None) -> tuple[str, ...]:
         return DEFAULT_ALLOWED_ORIGINS
     origins = tuple(origin.strip().rstrip("/") for origin in raw_value.split(",") if origin.strip())
     return origins or DEFAULT_ALLOWED_ORIGINS
+
+
+def get_bool_env(name: str, default: bool) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def get_int_env(name: str, default: int, minimum: int, maximum: int) -> int:
@@ -80,6 +95,9 @@ class Settings:
     max_image_height: int
     max_image_pixels: int
     inference_concurrency: int
+    onnx_intra_op_threads: int
+    onnx_inter_op_threads: int
+    rate_limit_enabled: bool
     rate_limit_requests: int
     rate_limit_window_seconds: int
     trust_proxy_headers: bool
@@ -99,29 +117,40 @@ def load_settings() -> Settings:
     trust_proxy = (
         trust_proxy_raw.lower() in ("true", "1", "yes")
         if trust_proxy_raw is not None
-        else (os.getenv("RENDER") is not None or os.getenv("RENDER_SERVICE_ID") is not None)
+        else False
     )
+    inference_concurrency = get_int_env("INFERENCE_CONCURRENCY", _default_inference_concurrency(), 1, 64)
+    # Split CPU threads across concurrent ONNX sessions (Dockerfile OMP_NUM_THREADS=1 does not apply outside containers).
+    default_intra = max(1, _cpu_count() // inference_concurrency)
     return Settings(
         allowed_origins=parse_origins(os.getenv("CORS_ALLOWED_ORIGINS")),
         yolo26s_model_path=Path(os.getenv("YOLO26S_MODEL_PATH", MODEL_DIR / "yolo26s.onnx")),
-        yolo26n_model_path=Path(os.getenv("YOLO26N_MODEL_PATH", MODEL_DIR / "yolo26n.pt")),
-        yolo26m_model_path=Path(os.getenv("YOLO26M_MODEL_PATH", MODEL_DIR / "yolo26m.pt")),
-        yolo26l_model_path=Path(os.getenv("YOLO26L_MODEL_PATH", MODEL_DIR / "yolo26l.pt")),
-        yolo26x_model_path=Path(os.getenv("YOLO26X_MODEL_PATH", MODEL_DIR / "yolo26x.pt")),
+        yolo26n_model_path=Path(os.getenv("YOLO26N_MODEL_PATH", MODEL_DIR / "yolo26n.onnx")),
+        yolo26m_model_path=Path(os.getenv("YOLO26M_MODEL_PATH", MODEL_DIR / "yolo26m.onnx")),
+        yolo26l_model_path=Path(os.getenv("YOLO26L_MODEL_PATH", MODEL_DIR / "yolo26l.onnx")),
+        yolo26x_model_path=Path(os.getenv("YOLO26X_MODEL_PATH", MODEL_DIR / "yolo26x.onnx")),
         trusted_yolo26s_sha256=os.getenv("YOLO26S_MODEL_SHA256", DEFAULT_TRUSTED_YOLO26S_SHA256).lower(),
         relevance_vision_model_path=Path(os.getenv("RELEVANCE_VISION_MODEL_PATH", MODEL_DIR / DEFAULT_RELEVANCE_VISION_MODEL_NAME)),
         relevance_embeddings_path=Path(os.getenv("RELEVANCE_EMBEDDINGS_PATH", MODEL_DIR / DEFAULT_RELEVANCE_EMBEDDINGS_NAME)),
         relevance_vision_sha256=os.getenv("RELEVANCE_VISION_SHA256", DEFAULT_RELEVANCE_VISION_SHA256).lower(),
         relevance_embeddings_sha256=os.getenv("RELEVANCE_EMBEDDINGS_SHA256", DEFAULT_RELEVANCE_EMBEDDINGS_SHA256).lower(),
-        image_size=get_int_env("INFERENCE_IMAGE_SIZE", 960, 320, 1280),
+        # Target side length when (re)exporting YOLO ONNX; runtime uses the graph's fixed input until re-exported.
+        # Bundled yolo26s.onnx is 320×320 — raising this alone does not upscale inference until a new artifact is installed.
+        image_size=get_int_env("INFERENCE_IMAGE_SIZE", 1280, 320, 1280),
         confidence_threshold=get_float_env("INFERENCE_CONFIDENCE_THRESHOLD", 0.25, 0.01, 0.99),
         iou_threshold=get_float_env("INFERENCE_IOU_THRESHOLD", 0.45, 0.01, 0.99),
-        max_upload_mb=get_int_env("MAX_UPLOAD_MB", 10, 1, 25),
-        max_image_width=get_int_env("MAX_IMAGE_WIDTH", 6000, 32, 10000),
-        max_image_height=get_int_env("MAX_IMAGE_HEIGHT", 6000, 32, 10000),
-        max_image_pixels=get_int_env("MAX_IMAGE_PIXELS", 20_000_000, 1024, 50_000_000),
-        inference_concurrency=get_int_env("INFERENCE_CONCURRENCY", 1, 1, 2),
-        rate_limit_requests=get_int_env("RATE_LIMIT_REQUESTS", 6, 1, 60),
+        # 50 MB file cap: blocks accidental multi-GB uploads while allowing high-res JPEGs from modern cameras.
+        max_upload_mb=get_int_env("MAX_UPLOAD_MB", 50, 1, 512),
+        # 12k px per side fits ~100 MP panoramas before pixel-count cap; still below Pillow decompression bomb defaults.
+        max_image_width=get_int_env("MAX_IMAGE_WIDTH", 12_000, 32, 20_000),
+        max_image_height=get_int_env("MAX_IMAGE_HEIGHT", 12_000, 32, 20_000),
+        max_image_pixels=get_int_env("MAX_IMAGE_PIXELS", 120_000_000, 1024, 200_000_000),
+        inference_concurrency=inference_concurrency,
+        onnx_intra_op_threads=get_int_env("ONNX_INTRA_OP_THREADS", default_intra, 1, 64),
+        onnx_inter_op_threads=get_int_env("ONNX_INTER_OP_THREADS", 1, 1, 64),
+        # Public-demo rate limit (Render/Vercel); off by default for trusted local use.
+        rate_limit_enabled=get_bool_env("RATE_LIMIT_ENABLED", False),
+        rate_limit_requests=get_int_env("RATE_LIMIT_REQUESTS", 120, 1, 10_000),
         rate_limit_window_seconds=get_int_env("RATE_LIMIT_WINDOW_SECONDS", 60, 10, 3600),
         trust_proxy_headers=trust_proxy,
     )
