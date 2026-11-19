@@ -71,7 +71,7 @@ export class DetectionApiError extends Error {
 
 const defaultApiUrl = import.meta.env.DEV
   ? "/inference-api"
-  : "http://127.0.0.1:8000";
+  : "https://sentinal-backend-163815383571.us-central1.run.app";
 const apiUrl = import.meta.env.VITE_INFERENCE_API_URL || defaultApiUrl;
 export const API_BASE_URL = apiUrl.replace(/\/$/, "");
 
