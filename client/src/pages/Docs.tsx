@@ -10,6 +10,7 @@ import {
   Database,
 } from "lucide-react";
 import { Link } from "wouter";
+import { SentinalLogo } from "@/components/SentinalLogo";
 import { API_BASE_URL, getHealth } from "@/lib/detection";
 
 const RELEASE_SHA = __RELEASE_SHA__;
@@ -367,7 +368,7 @@ export default function Docs() {
         <div className="page-width topbar">
           <div className="topbar-left">
             <a className="brand" href="/" aria-label="Sentinal home">
-              <span className="brand-mark"><Waves size={17} /></span>
+              <span className="brand-mark"><SentinalLogo size={32} /></span>
               Sentinal
             </a>
             <Link className="nav-link nav-link--active" href="/docs">Docs</Link>

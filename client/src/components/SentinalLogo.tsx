@@ -1,0 +1,70 @@
+export function SentinalLogo({
+  size = 28,
+  className = "",
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-label="Sentinal logo"
+    >
+      <defs>
+        <linearGradient
+          id="sentinal-grad"
+          x1="0"
+          y1="0"
+          x2="32"
+          y2="32"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#06b6d4" />
+          <stop offset="50%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#34d399" />
+        </linearGradient>
+      </defs>
+      {/* Outer rounded squircle container */}
+      <rect width="32" height="32" rx="8" fill="url(#sentinal-grad)" />
+
+      {/* Sentinel radar scan reticle */}
+      <path
+        d="M10 11C11.6 9 14.1 8 16.8 8C20.6 8 23.9 10.2 25.4 13.5"
+        stroke="#06130e"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeDasharray="1.5 2.5"
+      />
+
+      {/* Precision optical sensor beacon */}
+      <circle cx="17" cy="11.5" r="2.2" fill="#06130e" />
+      <circle cx="17.6" cy="10.9" r="0.8" fill="#ffffff" />
+
+      {/* Primary oceanic crest wave */}
+      <path
+        d="M6 18.5C8.8 16 11.8 16 14.5 17.5C17.2 19 20 19 22.8 17C24.5 15.8 25.8 16.2 26.5 16.6"
+        stroke="#06130e"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Secondary coastal tide current */}
+      <path
+        d="M7.5 23C10 21 12.8 21 15.2 22C17.6 23 20.2 22.8 22.5 21.2C23.8 20.3 24.8 20.6 25.5 21"
+        stroke="#06130e"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeOpacity="0.85"
+      />
+    </svg>
+  );
+}
+
+export default SentinalLogo;

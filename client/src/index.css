@@ -106,14 +106,19 @@ small, .caption { font-size: 0.8125rem; color: var(--text-3); }
 }
 .brand:hover { text-decoration: none; }
 .brand-mark {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  color: #06130e;
-  border-radius: 7px;
-  background: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
+  border-radius: 8px;
+  filter: drop-shadow(0 2px 8px rgba(16, 185, 129, 0.35));
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+.brand:hover .brand-mark {
+  transform: translateY(-1px) scale(1.05);
+  filter: drop-shadow(0 4px 14px rgba(16, 185, 129, 0.55));
 }
 .nav-link {
   font-size: 0.875rem;

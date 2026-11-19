@@ -1,189 +1,250 @@
+<div align="center">
+
+<img src="client/public/favicon.svg" alt="Sentinal Logo" width="80" height="80" />
+
 # Sentinal
 
-A web tool for detecting litter in coastal photographs. Upload a shoreline image and a YOLO26s model finds litter in it, returning bounding boxes, class labels, and confidence scores drawn over the image.
+### Visual Intelligence for Cleaner Coastlines & Marine Ecosystems
 
-This repository is configured for **local development** — no hosted deployment is required.
+[![Live Demo](https://img.shields.io/badge/Demo-sentinal--theta.vercel.app-10b981?style=for-the-badge&logo=vercel&logoColor=white)](https://sentinal-theta.vercel.app)
+[![Cloud Run](https://img.shields.io/badge/API-Google%20Cloud%20Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://sentinal-backend-163815383571.us-central1.run.app/health)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![React 19](https://img.shields.io/badge/Frontend-React%2019%20%2F%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 
----
-
-## Screenshot
-
-![Sentinal — marine litter detection platform](docs/screenshot.png)
-
----
-
-## What it does
-
-- Upload a JPEG, PNG, or WebP coastal photograph (up to **50 MB** locally; large high-resolution images supported)
-- Sends the image to a FastAPI inference service on your machine
-- Runs a checksum-pinned **YOLO26s** ONNX model (7 litter-type classes)
-- Optionally checks scene relevance (coastal/shoreline) before detection
-- Returns bounding boxes, confidence scores, and inference metadata
-- Draws the boxes as an SVG overlay on your image in the browser
-
-**Current classes:** `plastic`, `metal`, `glass`, `paper_cardboard`, `fishing_gear`, `natural_debris`, `other_litter`.
+</div>
 
 ---
 
-## Tech stack
+## Overview
 
-| Layer | Technology |
+**Sentinal** is an AI-powered visual intelligence platform designed for detecting, localizing, and classifying coastal litter and marine debris in shoreline and benthic imagery. 
+
+By operating at high resolution (up to **1280×1280px**) with hardware-accelerated **ONNX Runtime** on **Google Cloud Run**, Sentinal identifies both macro-debris (derelict fishing gear, bottles, cans) and small fragments (bottle caps, lids, thin rope lines) that typically collapse into undetectable pixel noise at conventional 320px/640px resolutions.
+
+Developed as part of marine ecology research supervised by **Dr. Sachinandan Dutta** at **Sultan Qaboos University**, Sentinal serves as a rapid screening and analysis tool to support coastal cleanups, marine conservation initiatives, and environmental monitoring.
+
+---
+
+## 🎯 10 Canonical Marine Debris Classes
+
+Sentinal unifies fragmented debris classifications into **10 standardized canonical categories**:
+
+| # | Class Name | Description | Key Indicators |
+|---|---|---|---|
+| 1 | `plastic_bottle` | Single-use water, beverage, and detergent bottles | Cylindrical, clear/colored PET |
+| 2 | `bottle_cap_lid` | Small plastic and metal twist caps, closures, jar lids | Circular, ribbed edges (2–6 cm) |
+| 3 | `plastic_bag` | Grocery bags, poly bags, transparent film | Sheet-like, crinkled, floating/buried |
+| 4 | `food_wrapper` | Snack bags, confectionery wrappers, crisp packets | Metallic film, printed plastic packaging |
+| 5 | `plastic_container` | Takeout tubs, food trays, oil jugs, tubs | Rigid molded polypropylene/HDPE |
+| 6 | `can_metal` | Aluminum beverage cans, tin food cans | Cylindrical metal, pull-tabs, crimped rims |
+| 7 | `fishing_net` | Commercial & artisanal fishing nets, ghost nets | Grid netting, woven twine, ALDFG |
+| 8 | `rope_line` | Polypropylene lines, mooring ropes, cordage | Twisted/braided strands, elongated fibers |
+| 9 | `styrofoam` | Expanded polystyrene (EPS) coolers, buoys, fragments | Porous, white beaded foam, fractured edges |
+| 10 | `glass_bottle` | Glass drink bottles, jars, glass vessels | Rigid, reflective, transparent/green/amber |
+
+---
+
+## 📚 8-Dataset Consolidated Benchmark
+
+Sentinal's multi-class model is trained on a merged, de-duplicated benchmark uniting **8 major marine and coastal debris datasets** representing over 10,000+ labeled annotations:
+
+1. **TACO (Trash Annotations in Context)**: High-resolution coastal, shoreline, and terrestrial debris annotations with fine-grained segmentations for bottle caps, lids, cans, bottles, and food wrappers.
+2. **TrashCan 1.0 (University of Minnesota)**: Undersea ROV imagery capturing benthic marine debris, submerged trash, ghost nets, and lines on the ocean floor.
+3. **ICT Mentoring Marine Debris**: Coastal shoreline survey dataset with dense annotations for bottles, cans, fishing nets, rope, and styrofoam.
+4. **MV02 Marine Litter**: Real-world coastal and aquatic debris imagery capturing floating plastics, containers, and packaging.
+5. **Global Solution Marine Debris**: Multi-condition coastal dataset covering plastic bags, bottles, and general marine waste.
+6. **Marine Debris & Nets**: Specialized collection focused on abandoned, lost, or discarded fishing gear (ALDFG), derelict nets, and ropes.
+7. **Debris KHPOO**: Extensive coastal survey dataset for rubber, plastics, and shoreline litter.
+8. **Deep-Sea Debris**: Submerged benthic and seafloor debris captured by autonomous underwater vehicles (AUVs).
+
+*All datasets are normalized with polygon-to-bounding-box projection and name-based schema alignment to prevent index drift.*
+
+---
+
+## 🏗️ System Architecture
+
+```
+┌────────────────────────────────┐
+│   Sentinal Client (Vercel)     │
+│  React 19 + TypeScript + Vite  │
+│    Client-side Auto-Scale      │
+└───────────────┬────────────────┘
+                │ Multipart POST /v1/detections (up to 25 MB)
+                ▼
+┌────────────────────────────────┐
+│ Google Cloud Run (us-central1) │
+│   FastAPI + Uvicorn Async      │
+│   2 vCPUs · 2 GB RAM Serverless│
+├────────────────────────────────┤
+│  1. In-memory validation (PIL) │
+│  2. High-res Letterbox (1280px)│
+│  3. ONNX Runtime C++ Engine    │
+│  4. Class-aware NMS (IoU 0.45) │
+└───────────────┬────────────────┘
+                │ JSON Detections + Scaled Bounding Boxes
+                ▼
+┌────────────────────────────────┐
+│ Interactive SVG Overlay Render │
+│ Multi-class Color Swatches     │
+│  Zero-refetch Local Preview    │
+└────────────────────────────────┘
+```
+
+### Key Technical Specs
+
+| Component | Specification |
 |---|---|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Express dev shell |
-| Backend | Python 3.11+, FastAPI, Uvicorn |
-| Model runtime | ONNX Runtime (CPU), OpenCV, Pillow, NumPy |
-| Model | YOLO26s — multi-class marine-litter ONNX artifact (320×320 input) |
-| Scene gate | CLIP ViT-B/32 (quantized ONNX) |
-
-Hosting artifacts are archived in [`docs/deployment-archive/`](docs/deployment-archive/). To redeploy later, follow [`docs/future-deploy.md`](docs/future-deploy.md).
-
----
-
-## How it works
-
-The browser sends the image as a multipart POST to the FastAPI service. The service validates bytes with Pillow (not filename or declared MIME alone), optionally scores scene relevance, letterbox-resizes to the model's declared input size (320×320 for the bundled ONNX), normalises pixels to float32, and runs inference via ONNX Runtime. Detections are filtered by per-class adaptive thresholds (contextual bandit) and non-maximum suppression (IoU 0.45). Box coordinates are mapped back to the original image dimensions and returned as JSON. The browser draws an SVG overlay — the original file is never re-fetched.
-
-See also [`backend/README.md`](backend/README.md) for the inference API contract.
+| **Inference Engine** | ONNX Runtime (CPU multi-threaded, ORT_SEQUENTIAL) |
+| **Input Resolution** | Dynamic up to **1280×1280px** (letterboxed, grey pad 114) |
+| **Hosting (Frontend)** | [Vercel](https://sentinal-theta.vercel.app) |
+| **Hosting (Inference API)** | [Google Cloud Run](https://sentinal-backend-163815383571.us-central1.run.app) (`us-central1`) |
+| **Hardware Allocation** | 2 vCPUs, 2 GB RAM, 25 MB max upload |
+| **Inference Latency** | ~280ms average per 1280px frame |
 
 ---
 
-## Running locally
+## 🚀 Running Locally
 
-You need [Node.js](https://nodejs.org) (v18+), [pnpm](https://pnpm.io), and Python 3.11+.
+### Prerequisites
+- **Node.js** (v18+) & **pnpm** (or npm)
+- **Python** 3.11+
 
-**Clone the repo**
-
+### 1. Clone the repository
 ```bash
 git clone https://github.com/Sonalhegde/litter-detect-app.git
 cd litter-detect-app
 ```
 
-**Configure environment (optional but recommended)**
-
+### 2. Start the FastAPI Backend
 ```bash
-cp client/.env.example client/.env
-cp backend/.env.example backend/.env
-```
-
-**Install dependencies**
-
-```bash
-# Frontend
-pnpm install
-
-# Backend
 cd backend
 python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
+
+# Activate virtual environment
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
 pip install -r requirements.txt
-```
-
-**Start the inference API** (terminal 1)
-
-```bash
-cd backend
-# activate .venv first
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-**Start the frontend** (terminal 2, repo root)
-
+### 3. Start the Frontend
+In another terminal at the repository root:
 ```bash
-# Windows PowerShell
-$env:NODE_ENV="development"; pnpm exec tsx watch server/_core/index.ts
+pnpm install
+pnpm dev
+```
+Open **`http://localhost:3000`** in your browser. The Vite development server automatically proxies `/inference-api` to `http://127.0.0.1:8000`.
 
-# macOS/Linux
-NODE_ENV=development pnpm dev
+---
+
+## 📡 API Reference
+
+### Health & Model Status
+```http
+GET /health
+```
+```bash
+curl -s https://sentinal-backend-163815383571.us-central1.run.app/health
+```
+**Example Response:**
+```json
+{
+  "status": "healthy",
+  "models": [
+    {
+      "id": "yolo26s",
+      "label": "YOLO26s",
+      "available": true,
+      "classes": [
+        "plastic_bottle",
+        "bottle_cap_lid",
+        "plastic_bag",
+        "food_wrapper",
+        "plastic_container",
+        "can_metal",
+        "fishing_net",
+        "rope_line",
+        "styrofoam",
+        "glass_bottle"
+      ],
+      "detail": "Production ONNX artifact loaded; multi-class marine debris detector active."
+    }
+  ]
+}
 ```
 
-Open **http://localhost:3000**. The dev server proxies `/inference-api` → `http://127.0.0.1:8000`, so you do not need `VITE_INFERENCE_API_URL` for local development.
+### Run Detection
+```http
+POST /v1/detections
+Content-Type: multipart/form-data
+```
+```bash
+curl -X POST https://sentinal-backend-163815383571.us-central1.run.app/v1/detections \
+  -F "file=@beach_sample.jpg" \
+  -F "model=yolo26s"
+```
+**Example Response:**
+```json
+{
+  "success": true,
+  "model": "yolo26s",
+  "count": 2,
+  "detections": [
+    {
+      "id": 1,
+      "class_name": "plastic_bottle",
+      "confidence": 0.884,
+      "bbox": { "x1": 142.3, "y1": 88.1, "x2": 298.7, "y2": 201.5 }
+    },
+    {
+      "id": 2,
+      "class_name": "fishing_net",
+      "confidence": 0.812,
+      "bbox": { "x1": 310.0, "y1": 150.2, "x2": 450.6, "y2": 290.0 }
+    }
+  ],
+  "image_size": { "width": 1920, "height": 1080 },
+  "inference_time_sec": 0.28,
+  "runtime": {
+    "input_size": 1280,
+    "device": "cpu",
+    "engine": "onnxruntime",
+    "confidence_threshold": 0.25,
+    "iou_threshold": 0.45
+  }
+}
+```
 
 ---
 
-## Environment variables
-
-**Frontend** (`client/.env`)
-
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_INFERENCE_API_URL` | `/inference-api` (dev) or `http://127.0.0.1:8000` (prod build) | Backend origin when not using the dev proxy. |
-
-**Backend** (`backend/.env`) — local defaults
-
-| Variable | Default | Description |
-|---|---|---|
-| `CORS_ALLOWED_ORIGINS` | `localhost` / `127.0.0.1` on ports 3000 and 5173 | Comma-separated browser-origin allowlist. |
-| `YOLO26S_MODEL_PATH` | `models/yolo26s.onnx` | Path to the trusted ONNX artifact. |
-| `YOLO26S_MODEL_SHA256` | pinned in `config.py` | SHA-256 integrity check before load. |
-| `INFERENCE_IMAGE_SIZE` | `1280` | Target side length when re-exporting ONNX; runtime uses the graph's fixed input until re-exported. |
-| `INFERENCE_CONFIDENCE_THRESHOLD` | `0.25` | Global confidence floor. |
-| `INFERENCE_IOU_THRESHOLD` | `0.45` | NMS IoU threshold. |
-| `MAX_UPLOAD_MB` | `50` | Maximum upload file size. |
-| `MAX_IMAGE_WIDTH`, `MAX_IMAGE_HEIGHT` | `12000` each | Decoded dimension caps. |
-| `MAX_IMAGE_PIXELS` | `120000000` | Decoded pixel cap (~120 MP). |
-| `INFERENCE_CONCURRENCY` | logical CPU count | Max simultaneous ONNX runs. |
-| `RATE_LIMIT_ENABLED` | `false` | Set `true` to enable per-IP rate limiting. |
-| `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` | `120`, `60` | Used only when rate limiting is enabled. |
-
-Full table and checksum workflow: [`backend/README.md`](backend/README.md).
-
----
-
-## Dataset and model
-
-The deployed model is a YOLO26s checkpoint fine-tuned for marine litter in coastal images. The bundled ONNX artifact detects seven litter-type classes (see above).
-
-Future training targets **BePLi v2** (Beach Plastic Litter v2), annotated coastal photographs from beaches in Japan.
-
-**BePLi v2 licence: [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)** — non-commercial use only, attribution required, derivatives must use the same licence. This applies to the training data and model weights derived from it; it does not apply to the application code (see [License](#license)).
-
----
-
-## Limitations
-
-- **Accuracy varies.** Detection quality depends on lighting, angle, distance, occlusion, compression, and similarity to training data. Small or partially submerged objects are easily missed.
-- **Fixed ONNX input size.** The bundled model runs at 320×320; re-export at a higher `imgsz` to improve small-object recall on very large photos.
-- **Zero detections ≠ no litter.** An empty result means nothing crossed the confidence threshold, not that the scene is debris-free.
-- **Not validated for formal use.** Not intended for regulatory reporting, scientific publication, or operational field decisions without independent validation.
-- **Per-class imbalance.** Some litter categories are rarer in training data and will have lower recall.
-
----
-
-## Roadmap
-
-- Higher-resolution ONNX export (1280+) for local/GPU setups
-- Additional YOLO26 variants (n/m/l/x) when verified checkpoints are available
-- BePLi v2 fine-tune for expanded class coverage
-
----
-
-## Running the tests
+## 🧪 Testing
 
 ```bash
-# Frontend type check and unit tests
-pnpm run check
+# Frontend tests (Vitest)
 pnpm test
 
-# Backend tests
+# Frontend production build
+pnpm build
+
+# Backend unit & contract tests (pytest)
 cd backend
-pytest -q
+pytest
 ```
 
 ---
 
-## Credits
+## 👥 Credits & Attribution
 
-Built by **Sonal Hegde**
-[GitHub](https://github.com/Sonalhegde) · [LinkedIn](https://www.linkedin.com/in/sonal-hegde-/) · [sonalhhegde@gmail.com](mailto:sonalhhegde@gmail.com)
-
-With guidance and mentorship from **Dr. Sachinandan Dutta**, Associate Professor, Department of Marine Science and Fisheries, Sultan Qaboos University, Muscat, Oman.
-Research interests: fisheries management, ecosystem modelling, marine ecology.
+- **Developer**: [Sonal Hegde](https://github.com/Sonalhegde) · [LinkedIn](https://www.linkedin.com/in/sonal-hegde-/) · [Email](mailto:sonalhhegde@gmail.com)
+- **Academic Mentorship**: **Dr. Sachinandan Dutta**, Associate Professor, Department of Marine Science and Fisheries, Sultan Qaboos University, Muscat, Oman. Specializing in fisheries management, marine ecology, and ecosystem modelling.
 
 ---
 
-## License
+## 📄 License
 
-The application code is released under the [MIT License](LICENSE).
-
-The training dataset (BePLi v2) is separately licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). That licence covers the data and any model weights derived from it; it does not govern the application source code.
+This repository is licensed under the [MIT License](LICENSE).
+Datasets cited are subject to their respective open research and academic licenses (TACO, TrashCan, CC BY-NC-SA 4.0, etc.).

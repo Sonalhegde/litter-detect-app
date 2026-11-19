@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, FileImage, ImageOff, LoaderCircle, Upload, Waves, X } from "lucide-react";
 import { Link } from "wouter";
+import { SentinalLogo } from "@/components/SentinalLogo";
 import {
   API_BASE_URL,
   averageConfidence,
@@ -195,7 +196,7 @@ export default function Home() {
         <div className="page-width topbar">
           <div className="topbar-left">
             <a className="brand" href="/" aria-label="Sentinal home">
-              <span className="brand-mark"><Waves size={18} /></span>
+              <span className="brand-mark"><SentinalLogo size={32} /></span>
               Sentinal
             </a>
             <Link className="nav-link" href="/docs">Research notes ↗</Link>
