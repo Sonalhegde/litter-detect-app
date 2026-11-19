@@ -144,8 +144,8 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
     );
     if (blob && blob.size <= UPLOAD_TARGET_BYTES) break;
     // Reduce by ~30% each pass while keeping a minimum resolution floor of 640px
-    width  = Math.max(640, Math.round(width  * 0.7));
-    height = Math.max(640, Math.round(height * 0.7));
+    width  = Math.max(1280, Math.round(width  * 0.7));
+    height = Math.max(1280, Math.round(height * 0.7));
     blob = null;
   }
 
