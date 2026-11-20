@@ -536,6 +536,34 @@ export default function Home() {
                     <DetectionOverlay result={result} />
                   </div>
 
+                  {/* Active model banner */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "0.8125rem",
+                    marginTop: "12px",
+                    marginBottom: "6px",
+                    background: result.model === "yolo26m" ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
+                    border: result.model === "yolo26m" ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)",
+                    color: result.model === "yolo26m" ? "#10b981" : "#f59e0b",
+                  }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: result.model === "yolo26m" ? "#10b981" : "#f59e0b" }} />
+                      {result.model === "yolo26m" ? "YOLO26m (10-Class Debris Model · 960px)" : `${result.modelLabel} (Baseline Fallback)`}
+                    </span>
+                    <span style={{ color: "var(--text-2)", fontSize: "0.75rem" }}>
+                      {formatDuration(result.inferenceTimeSec)}
+                    </span>
+                  </div>
+                  {result.model !== "yolo26m" && (
+                    <p style={{ fontSize: "0.75rem", color: "var(--text-2)", marginBottom: "10px" }}>
+                      Note: Live backend is using the baseline model. Redeploy Cloud Run to activate the 10-class YOLO26m model.
+                    </p>
+                  )}
+
                   <div className="result-stats">
                     <div className="stat-tile">
                       <strong>{result.count}</strong>
@@ -558,7 +586,7 @@ export default function Home() {
                                 className="det-swatch"
                                 style={{ background: colorMap[det.className] ?? "var(--cls-0)" }}
                               />
-                              {det.className}
+                              {formatClassLabel(det.className)}
                             </span>
                             <span className="det-confidence">{formatPercent(det.confidence)}</span>
                           </li>
