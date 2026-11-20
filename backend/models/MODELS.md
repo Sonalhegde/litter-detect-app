@@ -1,6 +1,19 @@
 # Model assets
 
-## Deployment model: `yolo26s.onnx` (7-class, trained checkpoint #2)
+## Production Deployment Model: `yolo26m.onnx` (10-Class High-Resolution Benchmark)
+
+`yolo26m.onnx` is the production marine debris detection model trained for 75 epochs across 5 harmonized benchmark datasets (`TACO`, `TrashCan`, `ICT`, `MV02`, `DeepSea`).
+- **Precision:** `84.6%` (peak)
+- **Recall:** `72.7%`
+- **mAP@50:** `75.5%`
+- **mAP@50-95:** `61.4%`
+- **Classes (10 canonical categories):** `plastic_bottle`, `bottle_cap_lid`, `plastic_bag`, `food_wrapper`, `plastic_container`, `can_metal`, `fishing_net`, `rope_line`, `styrofoam`, `glass_bottle`
+- **Input Resolution:** `[1, 3, 960, 960]` (Letterboxed dynamic tensor)
+- **Output:** `[1, 14, 18900]` (4 bounding box coordinates + 10 class probability scores across 18,900 anchor locations)
+- **SHA-256:** `48fe2dfcbc7f7bfb844d7ed3781b0e17be1d91ed1c22b3fbbc88626ba3c1865d`
+- **Size:** 81,944,655 bytes (~81.9 MB)
+
+## Deployment model: `yolo26s.onnx` (7-class, legacy prototype baseline)
 
 `yolo26s.onnx` is a checksum-pinned, fixed-320-pixel ONNX artifact exported from the
 second training run's best checkpoint of the YOLO26s litter detector. It is a genuinely
@@ -41,8 +54,8 @@ The service exposes five explicit model slots:
 | ID | Deployment artifact | Availability |
 |---|---|---|
 | `yolo26n` | `yolo26n.pt` | Not installed — placeholder for a separate effort |
-| `yolo26s` | `yolo26s.onnx` | 7-class trained checkpoint #2 (see above) |
-| `yolo26m` | `yolo26m.pt` | Not installed — placeholder for a separate effort |
+| `yolo26s` | `yolo26s.onnx` | 7-class legacy prototype baseline |
+| `yolo26m` | `yolo26m.onnx` | Active Production — 10-class marine debris detector (75.5% mAP50) |
 | `yolo26l` | `yolo26l.pt` | Not installed — placeholder for a separate effort |
 | `yolo26x` | `yolo26x.pt` | Not installed — placeholder for a separate effort |
 

@@ -1,0 +1,26 @@
+{
+  "classes": [
+    "plastic_bottle",
+    "bottle_cap_lid",
+    "plastic_bag",
+    "food_wrapper",
+    "plastic_container",
+    "can_metal",
+    "fishing_net",
+    "rope_line",
+    "styrofoam",
+    "glass_bottle"
+  ],
+  "colors": {
+    "plastic_bottle": "#38bdf8",
+    "bottle_cap_lid": "#fbbf24",
+    "plastic_bag": "#a855f7",
+    "food_wrapper": "#f97316",
+    "plastic_container": "#3b82f6",
+    "can_metal": "#f43f5e",
+    "fishing_net": "#10b981",
+    "rope_line": "#14b8a6",
+    "styrofoam": "#e2e8f0",
+    "glass_bottle": "#a3e635"
+  }
+}

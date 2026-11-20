@@ -154,7 +154,8 @@ export default function Home() {
     }
     lastScanTimeRef.current = now;
 
-    const modelEntry = health?.models.find((m) => m.id === "yolo26s");
+    const targetModelId = health?.models.find((m) => m.id === "yolo26m" && m.available) ? "yolo26m" : "yolo26s";
+    const modelEntry = health?.models.find((m) => m.id === targetModelId);
     if (modelEntry && !modelEntry.available) {
       setError(modelEntry.detail ?? "The detection model service is currently connecting or initializing.");
       setStatus("error"); return;
@@ -165,7 +166,7 @@ export default function Home() {
     setStatus("scanning"); setError(null); setResult(null);
 
     try {
-      const res = await requestDetection(file, "yolo26s", controller.signal, force);
+      const res = await requestDetection(file, targetModelId, controller.signal, force);
 
       // Hard-blocked by scene check and user didn't force: strictly override detection UI
       const isBlocked =
@@ -316,7 +317,7 @@ export default function Home() {
 
               <div className="model-note">
                 <strong>Model</strong>
-                <span>Sentinal YOLO · 10-Class Marine Debris Detector (1280px)</span>
+                <span>Sentinal YOLO26m · 10-Class Marine Debris Detector (960/1280px)</span>
               </div>
 
               <div className="btn-row">

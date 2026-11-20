@@ -48,8 +48,8 @@ class ModelRegistry:
         self.settings = settings
         self.specs: dict[ModelId, ModelSpec] = {
             "yolo26n": ModelSpec("yolo26n", "YOLO26n", settings.yolo26n_model_path, "Lightweight edge baseline for mobile/edge inference"),
-            "yolo26s": ModelSpec("yolo26s", "YOLO26s", settings.yolo26s_model_path, "Primary marine debris detector (multi-class, high-resolution)"),
-            "yolo26m": ModelSpec("yolo26m", "YOLO26m", settings.yolo26m_model_path, "Medium 10-class marine debris detector trained on 8 benchmark datasets"),
+            "yolo26s": ModelSpec("yolo26s", "YOLO26s", settings.yolo26s_model_path, "Legacy prototype baseline (7-class, 320px)"),
+            "yolo26m": ModelSpec("yolo26m", "YOLO26m", settings.yolo26m_model_path, "Primary 10-class marine debris detector (75.5% mAP50, high-resolution)"),
             "yolo26l": ModelSpec("yolo26l", "YOLO26l", settings.yolo26l_model_path, "Large high-accuracy model for dense debris cluster analysis"),
             "yolo26x": ModelSpec("yolo26x", "YOLO26x", settings.yolo26x_model_path, "Maximum-capacity model for complex benthic/underwater scenes"),
         }
@@ -89,8 +89,11 @@ class ModelRegistry:
                 detail = f"{spec.description} (Artifact {spec.path.name} ready for activation)."
             elif spec.id in self._load_errors:
                 detail = "Deployment artifact could not be loaded."
-            elif spec.id == "yolo26s" and spec.path.suffix.lower() == ".onnx":
-                detail = "Trusted production ONNX artifact loaded; multi-class marine debris detector active."
+            elif spec.path.suffix.lower() == ".onnx":
+                if spec.id == "yolo26s":
+                    detail = "Trusted production ONNX artifact loaded; multi-class marine debris detector active."
+                else:
+                    detail = f"Production ONNX artifact loaded; {spec.description} active."
                 try:
                     session = self._models.get(spec.id)
                     if session is None and present:

@@ -133,6 +133,7 @@ backend/models/*
 !backend/models/scene_text_embeddings.npz
 *.onnx
 !backend/models/yolo26s.onnx
+!backend/models/yolo26m.onnx
 !backend/models/clip_vision_quantized.onnx
 *.engine
 *.tflite

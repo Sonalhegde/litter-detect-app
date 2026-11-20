@@ -1,0 +1,61 @@
+{
+  "model_name": "Sentinal YOLO26m Marine Debris Detector",
+  "input_resolution": 960,
+  "target_classes": [
+    "plastic_bottle",
+    "bottle_cap_lid",
+    "plastic_bag",
+    "food_wrapper",
+    "plastic_container",
+    "can_metal",
+    "fishing_net",
+    "rope_line",
+    "styrofoam",
+    "glass_bottle"
+  ],
+  "class_count": 10,
+  "classes_map": {
+    "0": "plastic_bottle",
+    "1": "bottle_cap_lid",
+    "2": "plastic_bag",
+    "3": "food_wrapper",
+    "4": "plastic_container",
+    "5": "can_metal",
+    "6": "fishing_net",
+    "7": "rope_line",
+    "8": "styrofoam",
+    "9": "glass_bottle"
+  },
+  "datasets_included": [
+    {
+      "name": "TACO (Trash Annotations in Context)",
+      "source": "Flickr Open Source",
+      "url": "https://github.com/pedropro/TACO",
+      "description": "Diverse coastal and terrestrial litter with fine-grained packaging labels."
+    },
+    {
+      "name": "TrashCan 1.0",
+      "source": "University of Minnesota / Marine Subsea Robotics",
+      "url": "https://conservancy.umn.edu/handle/11299/214865",
+      "description": "Underwater ROV subsea footage annotating debris, biofouling, and benthic objects."
+    },
+    {
+      "name": "ICT Marine Debris",
+      "source": "Roboflow (ict-mentoring/marine_debris-upr6c)",
+      "url": "https://universe.roboflow.com/ict-mentoring/marine_debris-upr6c",
+      "description": "Intertidal and shoreline debris with nets, styrofoam, and beverage containers."
+    },
+    {
+      "name": "MV02 Marine Debris Detection",
+      "source": "Roboflow (new-workspace-mog5t/mv02-marine-debris-detection-pemg8)",
+      "url": "https://universe.roboflow.com/new-workspace-mog5t/mv02-marine-debris-detection-pemg8",
+      "description": "Coastal monitoring debris collection."
+    },
+    {
+      "name": "Deep-Sea Debris Detection",
+      "source": "Roboflow (debris/deep-sea-debris-detection-dataset)",
+      "url": "https://universe.roboflow.com/debris/deep-sea-debris-detection-dataset",
+      "description": "Deep ocean benthic litter, nets, and sunken debris."
+    }
+  ]
+}
