@@ -95,7 +95,7 @@ export function formatDuration(seconds: number) {
 }
 
 // ── Image compression (client-side) ───────────────────────────────────────────
-const UPLOAD_TARGET_BYTES = 50 * 1024 * 1024;  // match backend MAX_UPLOAD_MB default
+const UPLOAD_TARGET_BYTES = 25 * 1024 * 1024;  // 25 MB max to match Google Cloud Run payload ceiling
 const UPLOAD_HARD_LIMIT   = 512 * 1024 * 1024; // reject non-photo files, not normal camera JPEGs
 const COMPRESS_QUALITY    = 0.85;               // first-pass JPEG/WebP quality
 
@@ -143,9 +143,11 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
       canvas.toBlob(res, mimeType, COMPRESS_QUALITY)
     );
     if (blob && blob.size <= UPLOAD_TARGET_BYTES) break;
-    // Reduce by ~30% each pass while keeping a minimum resolution floor of 640px
-    width  = Math.max(1280, Math.round(width  * 0.7));
-    height = Math.max(1280, Math.round(height * 0.7));
+    // Scale down dimensions proportionally while preserving aspect ratio (min dimension >= 640px)
+    const scale = 0.75;
+    if (Math.min(width, height) * scale < 640) break;
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
     blob = null;
   }
 
@@ -153,7 +155,7 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
 
   if (!blob || blob.size > UPLOAD_TARGET_BYTES) {
     throw new Error(
-      "Could not compress this image to under 50 MB. Try a smaller or less complex image."
+      "Could not compress this image to under 25 MB. Try a smaller or less complex image."
     );
   }
 

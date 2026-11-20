@@ -93,7 +93,8 @@ export default function Home() {
   // ── File selection with auto-compression ──────────────────────────────────
   const selectFile = useCallback(async (candidate?: File) => {
     if (!candidate) return;
-    if (candidate.type && !SUPPORTED_TYPES.has(candidate.type)) {
+    const isSupported = (candidate.type && SUPPORTED_TYPES.has(candidate.type)) || /\.(jpe?g|png|webp)$/i.test(candidate.name);
+    if (!isSupported) {
       setError("Choose a JPEG, PNG, or WebP image."); setStatus("error"); return;
     }
 
