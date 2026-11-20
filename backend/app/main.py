@@ -62,6 +62,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.add_middleware(RequestAuditMiddleware)
 
     @application.middleware("http")
+    async def add_security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        return response
+
+    @application.middleware("http")
     async def reject_excessive_content_length(request: Request, call_next):  # type: ignore[no-untyped-def]
         content_length = request.headers.get("content-length")
         if content_length:

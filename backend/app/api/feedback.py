@@ -13,7 +13,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from starlette.concurrency import run_in_threadpool
 
-from app.api.dependencies import get_bandit_registry
+from app.api.dependencies import get_bandit_registry, get_rate_limiter
 from app.schemas.feedback import (
     BanditStatusResponse,
     BanditClassStatus,
@@ -21,6 +21,8 @@ from app.schemas.feedback import (
     OfflineEvalResponse,
 )
 from app.services.bandit import BanditRegistry
+from app.services.errors import ApiProblem
+from app.services.rate_limit import SlidingWindowRateLimiter, client_identifier
 
 
 router = APIRouter(tags=["feedback"])
@@ -31,7 +33,11 @@ async def submit_feedback(
     request: Request,
     body: FeedbackRequest,
     bandit: BanditRegistry = Depends(get_bandit_registry),
+    rate_limiter: SlidingWindowRateLimiter = Depends(get_rate_limiter),
 ) -> None:
+    retry_after = rate_limiter.retry_after(client_identifier(request))
+    if retry_after is not None:
+        raise ApiProblem(429, "rate_limited", "Too many feedback submissions. Please wait before trying again.", {"Retry-After": str(retry_after)})
     """
     Accept user feedback for one or more detections from a single inference call.
 

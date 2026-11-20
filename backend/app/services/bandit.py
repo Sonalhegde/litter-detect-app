@@ -25,6 +25,7 @@ import json
 import math
 import os
 import sqlite3
+import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
@@ -120,7 +121,7 @@ class BanditRegistry:
     """
 
     def __init__(self, db_path: Path | None = None) -> None:
-        default = os.environ.get("BANDIT_DB_PATH", "/tmp/sentinel_bandit.db")
+        default = os.environ.get("BANDIT_DB_PATH", str(Path(tempfile.gettempdir()) / "sentinel_bandit.db"))
         self._db_path = db_path or Path(default)
         self._bandits: dict[str, ClassBandit] = {}
         # Reentrant: record_feedback holds this lock and calls get_or_create,

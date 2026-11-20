@@ -43,25 +43,30 @@ def test_class_aware_nms_does_not_cross_suppress_different_classes() -> None:
 
 
 def test_multiclass_feedback_updates_independent_bandit_thresholds(client) -> None:  # type: ignore[no-untyped-def]
-    feedback_payload = {
-        "detections": [
-            {"detection_id": 1, "class_name": "plastic_bottle", "confidence": 0.30, "verdict": "wrong"},
-            {"detection_id": 2, "class_name": "fishing_net", "confidence": 0.80, "verdict": "correct"},
-        ],
-        "missed": [
-            {"class_name": "fishing_net", "confidence": 0.25},
-        ],
-    }
+    # Temporarily bypass rate limiter to test 10 consecutive bandit updates
+    client.app.state.rate_limiter.enabled = False
+    try:
+        feedback_payload = {
+            "detections": [
+                {"detection_id": 1, "class_name": "plastic_bottle", "confidence": 0.30, "verdict": "wrong"},
+                {"detection_id": 2, "class_name": "fishing_net", "confidence": 0.80, "verdict": "correct"},
+            ],
+            "missed": [
+                {"class_name": "fishing_net", "confidence": 0.25},
+            ],
+        }
 
-    for _ in range(10):
-        res = client.post("/v1/feedback", json=feedback_payload)
-        assert res.status_code == 204
+        for _ in range(10):
+            res = client.post("/v1/feedback", json=feedback_payload)
+            assert res.status_code == 204
 
-    status_res = client.get("/v1/bandit/status")
-    assert status_res.status_code == 200
-    statuses = {item["class_name"]: item for item in status_res.json()["classes"]}
+        status_res = client.get("/v1/bandit/status")
+        assert status_res.status_code == 200
+        statuses = {item["class_name"]: item for item in status_res.json()["classes"]}
 
-    assert "plastic_bottle" in statuses
-    assert "fishing_net" in statuses
-    assert statuses["plastic_bottle"]["feedback_count"] == 10
-    assert statuses["fishing_net"]["feedback_count"] == 20
+        assert "plastic_bottle" in statuses
+        assert "fishing_net" in statuses
+        assert statuses["plastic_bottle"]["feedback_count"] == 10
+        assert statuses["fishing_net"]["feedback_count"] == 20
+    finally:
+        client.app.state.rate_limiter.enabled = True
