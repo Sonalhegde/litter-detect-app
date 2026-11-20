@@ -630,7 +630,7 @@ export default function Home() {
           <span>Release {RELEASE_SHA}</span>
         </div>
         <div className="page-width footer-update">
-          LAST UPDATE - 19 Nov 2026 19:00 GST
+          LAST UPDATE - 20 Nov 2026 19:15 GST · Production YOLO26m Active
         </div>
       </footer>
     </div>

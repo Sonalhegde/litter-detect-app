@@ -426,7 +426,7 @@ export default function Docs() {
           <span>Release {RELEASE_SHA}</span>
         </div>
         <div className="page-width footer-update">
-          LAST UPDATE - 19 Nov 2026 19:00 GST
+          LAST UPDATE - 20 Nov 2026 19:15 GST · 10-Class Benchmark Active
         </div>
       </footer>
     </div>

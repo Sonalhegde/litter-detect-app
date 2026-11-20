@@ -168,6 +168,9 @@ export default function Evaluation() {
           <span>Sentinal</span>
           <span><Link href="/">Detector</Link> · <Link href="/docs">Docs</Link></span>
         </div>
+        <div className="page-width footer-update">
+          LAST UPDATE - 20 Nov 2026 19:15 GST · 75-Epoch Validation Complete
+        </div>
       </footer>
     </div>
   );
