@@ -89,7 +89,7 @@ function DetectionOverlay({ result }: { result: DetectionResponse }) {
 
         return (
           <g key={det.id}>
-            {/* Crisp bounding box with subtle translucent fill and shadow */}
+            {/* Crisp bounding box with 100% transparent interior */}
             <rect
               className="det-box"
               x={det.bbox.x1}
@@ -100,22 +100,22 @@ function DetectionOverlay({ result }: { result: DetectionResponse }) {
               style={{
                 stroke: color,
                 strokeWidth,
-                fill: `${color}18`,
+                fill: "transparent",
               }}
             />
-            {/* High-contrast solid dark pill behind text */}
+            {/* Semi-transparent frosted glass pill badge */}
             <rect
               className="det-badge"
               x={badgeX}
               y={badgeY}
               width={badgeWidth}
               height={badgeHeight}
-              rx={Math.round(badgeHeight * 0.25)}
-              fill="#0b132b"
+              rx={Math.round(badgeHeight * 0.32)}
+              fill="rgba(15, 23, 42, 0.65)"
               stroke={color}
-              strokeWidth={Math.max(1.5, strokeWidth * 0.6)}
+              strokeWidth={Math.max(1.2, strokeWidth * 0.55)}
             />
-            {/* Bold, sharp white label text centered in pill */}
+            {/* Neat, crisp high-contrast white text */}
             <text
               className="det-label"
               x={badgeX + paddingX}
@@ -123,6 +123,8 @@ function DetectionOverlay({ result }: { result: DetectionResponse }) {
               style={{
                 fontSize: `${fontSize}px`,
                 letterSpacing: "0.02em",
+                fill: "#ffffff",
+                filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.95))",
               }}
             >
               {labelText}
