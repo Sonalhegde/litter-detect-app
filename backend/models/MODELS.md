@@ -12,6 +12,7 @@
 - **Output:** `[1, 14, 18900]` (4 bounding box coordinates + 10 class probability scores across 18,900 anchor locations)
 - **SHA-256:** `48fe2dfcbc7f7bfb844d7ed3781b0e17be1d91ed1c22b3fbbc88626ba3c1865d`
 - **Size:** 81,944,655 bytes (~81.9 MB)
+- **Kaggle Checkpoint Asset:** `/kaggle/input/datasets/sonalhegde/best-pt/yolo26m_sentinal_best.pt` (PyTorch 44.1 MB)
 
 ## Deployment model: `yolo26s.onnx` (7-class, legacy prototype baseline)
 

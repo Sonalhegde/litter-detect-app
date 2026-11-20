@@ -1,6 +1,7 @@
 {
   "model_name": "Sentinal YOLO26m Marine Debris Detector",
   "input_resolution": 960,
+  "kaggle_checkpoint_path": "/kaggle/input/datasets/sonalhegde/best-pt/yolo26m_sentinal_best.pt",
   "target_classes": [
     "plastic_bottle",
     "bottle_cap_lid",
