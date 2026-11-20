@@ -10,11 +10,12 @@ type MetricRow = {
 };
 
 const SUMMARY_METRICS: MetricRow[] = [
-  { name: "Precision (mAP@50)", value: "84.6%", status: "verified", note: "Across 10 canonical debris classes" },
-  { name: "Recall", value: "79.2%", status: "verified", note: "High sensitivity on small shoreline items" },
-  { name: "mAP@50–95", value: "58.7%", status: "verified", note: "Strict multi-IoU thresholding" },
-  { name: "F1 Score", value: "81.8%", status: "verified", note: "Optimal harmonic mean at threshold 0.25" },
-  { name: "Inference Latency", value: "0.28s", status: "verified", note: "ONNX Runtime on Google Cloud Run (1280px)" },
+  { name: "Precision (Peak)", value: "84.6%", status: "verified", note: "Achieved at Epoch 67 across 10 canonical debris classes" },
+  { name: "Recall", value: "72.7%", status: "verified", note: "High sensitivity on small shoreline and submerged items" },
+  { name: "mAP@50 (Peak)", value: "75.5%", status: "verified", note: "Mean Average Precision at 0.50 IoU threshold" },
+  { name: "mAP@50–95 (Peak)", value: "61.4%", status: "verified", note: "Strict multi-IoU thresholding (COCO evaluation standard)" },
+  { name: "Training Scale", value: "75 Epochs (9.5h)", status: "verified", note: "34,231s continuous compute on Nvidia L4 GPU" },
+  { name: "Inference Latency", value: "0.28s", status: "verified", note: "ONNX Runtime execution (960x960 native)" },
 ];
 
 const PER_CLASS_METRICS = [
@@ -113,6 +114,50 @@ export default function Evaluation() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </section>
+
+          {/* Research Training Artifacts & Visual Curves */}
+          <section className="panel" aria-label="Research Visualizations" style={{ marginTop: 24 }}>
+            <div className="panel-header">
+              <div className="panel-header-meta">
+                <span className="step-badge">EXPERIMENTAL ARTIFACTS</span>
+                <h2>Training dynamics & validation curves</h2>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, marginTop: 16 }}>
+              <div style={{ background: "var(--card-bg, rgba(255,255,255,0.03))", borderRadius: 8, padding: 16, border: "1px solid var(--border)" }}>
+                <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>Loss & Convergence Progression (75 Epochs)</h3>
+                <img src="/research/results.png" alt="75 Epoch Training Results" style={{ width: "100%", borderRadius: 6, display: "block" }} />
+                <p style={{ fontSize: "0.75rem", color: "var(--text-2)", marginTop: 8 }}>
+                  Shows box loss dropping from 1.34 to 0.59, cls loss dropping to 0.29, and mAP@50 reaching 75.5%.
+                </p>
+              </div>
+
+              <div style={{ background: "var(--card-bg, rgba(255,255,255,0.03))", borderRadius: 8, padding: 16, border: "1px solid var(--border)" }}>
+                <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>Confusion Matrix</h3>
+                <img src="/research/confusion_matrix.png" alt="Confusion Matrix" style={{ width: "100%", borderRadius: 6, display: "block" }} />
+                <p style={{ fontSize: "0.75rem", color: "var(--text-2)", marginTop: 8 }}>
+                  Diagonal dominance confirms inter-class distinctiveness across the 10 consolidated classes.
+                </p>
+              </div>
+
+              <div style={{ background: "var(--card-bg, rgba(255,255,255,0.03))", borderRadius: 8, padding: 16, border: "1px solid var(--border)" }}>
+                <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>Precision-Recall (PR) Curve</h3>
+                <img src="/research/BoxPR_curve.png" alt="Precision-Recall Curve" style={{ width: "100%", borderRadius: 6, display: "block" }} />
+                <p style={{ fontSize: "0.75rem", color: "var(--text-2)", marginTop: 8 }}>
+                  Comprehensive precision vs recall trade-off curve across all confidence thresholds.
+                </p>
+              </div>
+
+              <div style={{ background: "var(--card-bg, rgba(255,255,255,0.03))", borderRadius: 8, padding: 16, border: "1px solid var(--border)" }}>
+                <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>Validation Batch Visual Predictions</h3>
+                <img src="/research/val_batch0_pred.jpg" alt="Validation Predictions" style={{ width: "100%", borderRadius: 6, display: "block" }} />
+                <p style={{ fontSize: "0.75rem", color: "var(--text-2)", marginTop: 8 }}>
+                  Sample ground truth vs predicted bounding boxes and classes on real-world marine debris imagery.
+                </p>
+              </div>
             </div>
           </section>
         </div>
