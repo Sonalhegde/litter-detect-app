@@ -83,9 +83,9 @@ function SectionContent({ id, classes }: { id: SectionId; classes: string[] }) {
         <div className="docs-section-body">
           <h3>How it works</h3>
           <p>
-            You select an image file. The browser sends it as a multipart POST request to the
+            You select an image file. The client pre-validates dimensions (safeguarding up to 48 Megapixels) and auto-optimizes large photos to 2560px and under 25 MB to prevent backend memory spikes. The browser then sends it as a multipart POST request to the
             FastAPI inference service hosted on Google Cloud Run. The service validates the uploaded bytes with Pillow —
-            checking that they represent a valid JPEG, PNG, or WebP file within the 25&thinsp;MB size limit — then decodes the image to an RGB array in memory. The original file is never written to disk.
+            checking that they represent a valid JPEG, PNG, or WebP file within the 25&thinsp;MB size limit and 48&thinsp;MP threshold — then decodes the image to an RGB array in memory. The original file is never written to disk.
           </p>
           <p>
             The image is letterbox-resized to fit the model's high-resolution input grid (up to 1280&thinsp;×&thinsp;1280):

@@ -90,7 +90,7 @@ class ModelRegistry:
             elif spec.id in self._load_errors:
                 detail = "Deployment artifact could not be loaded."
             elif spec.id == "yolo26s" and spec.path.suffix.lower() == ".onnx":
-                detail = "Production ONNX artifact loaded; multi-class marine debris detector active."
+                detail = "Trusted production ONNX artifact loaded; multi-class marine debris detector active."
                 try:
                     session = self._models.get(spec.id)
                     if session is None and present:

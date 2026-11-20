@@ -94,32 +94,73 @@ export function formatDuration(seconds: number) {
   return `${seconds.toFixed(seconds < 10 ? 2 : 1)}s`;
 }
 
-// ── Image compression (client-side) ───────────────────────────────────────────
-const UPLOAD_TARGET_BYTES = 25 * 1024 * 1024;  // 25 MB max to match Google Cloud Run payload ceiling
-const UPLOAD_HARD_LIMIT   = 512 * 1024 * 1024; // reject non-photo files, not normal camera JPEGs
-const COMPRESS_QUALITY    = 0.85;               // first-pass JPEG/WebP quality
+// ── Image upload & compression limits (client-side) ───────────────────────────
+export const UPLOAD_TARGET_BYTES   = 25 * 1024 * 1024;  // 25 MB max payload ceiling (matches GCP Cloud Run)
+export const UPLOAD_HARD_FILE_CAP  = 100 * 1024 * 1024; // 100 MB absolute file limit (reject before browser canvas freeze)
+export const MAX_SAFE_DIMENSION    = 2560;              // 2560px max side length (2x YOLO 1280px native input)
+export const MAX_SAFE_PIXELS       = 48_000_000;        // 48 Megapixels hard cap (reject decompression bombs)
+export const COMPRESS_QUALITY      = 0.85;              // High-fidelity WebP/JPEG quality
 
 export type CompressResult =
   | { file: File; resized: false }
-  | { file: File; resized: true; originalSize: number };
+  | {
+      file: File;
+      resized: true;
+      originalSize: number;
+      originalDim: { width: number; height: number };
+      newDim: { width: number; height: number };
+    };
 
 /**
- * If the file is already within the upload target, return it unchanged.
- * If it exceeds the hard limit, throw — that's not a normal photo.
- * Otherwise canvas-resize + re-encode to WebP/JPEG at 85% quality,
- * reducing dimensions while maintaining a minimum resolution floor (640px).
+ * Validates and prepares images before transmission to prevent backend crashes:
+ * 1. Hard-rejects corrupt/excessive files (>100 MB or >48 MP) to prevent browser/server OOM.
+ * 2. If both file size <= 25 MB and dimensions <= 2560px, passes through as-is.
+ * 3. If dimensions exceed 2560px or size > 25 MB, scales proportionally to <= 2560px
+ *    (preserving aspect ratio) and re-encodes via canvas to WebP/JPEG <= 25 MB.
  */
 export async function prepareImageForUpload(raw: File): Promise<CompressResult> {
-  if (raw.size <= UPLOAD_TARGET_BYTES) return { file: raw, resized: false };
-  if (raw.size > UPLOAD_HARD_LIMIT) {
+  if (raw.size > UPLOAD_HARD_FILE_CAP) {
+    const mb = (raw.size / 1024 / 1024).toFixed(0);
     throw new Error(
-      "This file is too large to be a normal photo (over 512 MB). Choose a different image."
+      `File size exceeds 100 MB (${mb} MB). Please select an image under 25 MB.`
     );
   }
 
+  // Inspect image dimensions defensively
   const originalSize = raw.size;
-  const bitmap = await createImageBitmap(raw);
-  let { width, height } = bitmap;
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(raw);
+  } catch {
+    throw new Error("Unable to decode this image. Please upload a standard JPEG, PNG, or WebP photo.");
+  }
+
+  const origWidth = bitmap.width;
+  const origHeight = bitmap.height;
+
+  if (origWidth * origHeight > MAX_SAFE_PIXELS) {
+    bitmap.close();
+    const mp = ((origWidth * origHeight) / 1e6).toFixed(1);
+    throw new Error(
+      `Image resolution is too high (${origWidth} × ${origHeight} = ${mp} MP). Maximum allowed is 48 MP.`
+    );
+  }
+
+  // If already within 25 MB and within 2560px bounds, send without modifications
+  const maxDim = Math.max(origWidth, origHeight);
+  if (raw.size <= UPLOAD_TARGET_BYTES && maxDim <= MAX_SAFE_DIMENSION) {
+    bitmap.close();
+    return { file: raw, resized: false };
+  }
+
+  // Proportionally downscale to fit within MAX_SAFE_DIMENSION
+  let targetWidth = origWidth;
+  let targetHeight = origHeight;
+  if (maxDim > MAX_SAFE_DIMENSION) {
+    const ratio = MAX_SAFE_DIMENSION / maxDim;
+    targetWidth = Math.round(origWidth * ratio);
+    targetHeight = Math.round(origHeight * ratio);
+  }
 
   let blob: Blob | null = null;
   let mimeType = "image/webp";
@@ -133,21 +174,25 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
   );
   if (!supportsWebP) mimeType = "image/jpeg";
 
+  let curW = targetWidth;
+  let curH = targetHeight;
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = curW;
+    canvas.height = curH;
     const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(bitmap, 0, 0, width, height);
+    ctx.drawImage(bitmap, 0, 0, curW, curH);
     blob = await new Promise<Blob | null>((res) =>
       canvas.toBlob(res, mimeType, COMPRESS_QUALITY)
     );
     if (blob && blob.size <= UPLOAD_TARGET_BYTES) break;
-    // Scale down dimensions proportionally while preserving aspect ratio (min dimension >= 640px)
+
+    // Scale down dimensions proportionally if still oversized, keeping min dimension >= 640px
     const scale = 0.75;
-    if (Math.min(width, height) * scale < 640) break;
-    width = Math.round(width * scale);
-    height = Math.round(height * scale);
+    if (Math.min(curW, curH) * scale < 640) break;
+    curW = Math.round(curW * scale);
+    curH = Math.round(curH * scale);
     blob = null;
   }
 
@@ -162,7 +207,13 @@ export async function prepareImageForUpload(raw: File): Promise<CompressResult> 
   const baseName = raw.name.replace(/\.[^.]+$/, "") || "image";
   const ext = mimeType === "image/webp" ? "webp" : "jpg";
   const compressed = new File([blob], `${baseName}.${ext}`, { type: mimeType });
-  return { file: compressed, resized: true, originalSize };
+  return {
+    file: compressed,
+    resized: true,
+    originalSize,
+    originalDim: { width: origWidth, height: origHeight },
+    newDim: { width: curW, height: curH },
+  };
 }
 
 // ── Response normalisation ─────────────────────────────────────────────────────

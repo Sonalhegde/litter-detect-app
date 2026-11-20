@@ -141,16 +141,16 @@ def load_settings() -> Settings:
         iou_threshold=get_float_env("INFERENCE_IOU_THRESHOLD", 0.45, 0.01, 0.99),
         # 50 MB file cap: blocks accidental multi-GB uploads while allowing high-res JPEGs from modern cameras.
         max_upload_mb=get_int_env("MAX_UPLOAD_MB", 50, 1, 512),
-        # 12k px per side fits ~100 MP panoramas before pixel-count cap; still below Pillow decompression bomb defaults.
-        max_image_width=get_int_env("MAX_IMAGE_WIDTH", 12_000, 32, 20_000),
-        max_image_height=get_int_env("MAX_IMAGE_HEIGHT", 12_000, 32, 20_000),
-        max_image_pixels=get_int_env("MAX_IMAGE_PIXELS", 120_000_000, 1024, 200_000_000),
+        # 8k px per side fits high-res panoramas while protecting container memory ceilings.
+        max_image_width=get_int_env("MAX_IMAGE_WIDTH", 8_192, 32, 20_000),
+        max_image_height=get_int_env("MAX_IMAGE_HEIGHT", 8_192, 32, 20_000),
+        max_image_pixels=get_int_env("MAX_IMAGE_PIXELS", 48_000_000, 1024, 200_000_000),
         inference_concurrency=inference_concurrency,
         onnx_intra_op_threads=get_int_env("ONNX_INTRA_OP_THREADS", default_intra, 1, 64),
         onnx_inter_op_threads=get_int_env("ONNX_INTER_OP_THREADS", 1, 1, 64),
-        # Optional rate limit for shared/multi-user setups; off by default on localhost.
-        rate_limit_enabled=get_bool_env("RATE_LIMIT_ENABLED", False),
-        rate_limit_requests=get_int_env("RATE_LIMIT_REQUESTS", 120, 1, 10_000),
+        # Enable rate limit by default to defend public container runtimes from traffic spikes
+        rate_limit_enabled=get_bool_env("RATE_LIMIT_ENABLED", True),
+        rate_limit_requests=get_int_env("RATE_LIMIT_REQUESTS", 60, 1, 10_000),
         rate_limit_window_seconds=get_int_env("RATE_LIMIT_WINDOW_SECONDS", 60, 10, 3600),
         trust_proxy_headers=trust_proxy,
     )

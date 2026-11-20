@@ -78,6 +78,7 @@ export default function Home() {
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const lastScanTimeRef = useRef<number>(0);
 
   const refreshHealth = useCallback(async () => {
     try { setHealth(await getHealth()); }
@@ -90,7 +91,7 @@ export default function Home() {
     abortRef.current?.abort();
   }, [previewUrl]);
 
-  // ── File selection with auto-compression ──────────────────────────────────
+  // ── File selection with defensive auto-compression & dimension limits ──────
   const selectFile = useCallback(async (candidate?: File) => {
     if (!candidate) return;
     const isSupported = (candidate.type && SUPPORTED_TYPES.has(candidate.type)) || /\.(jpe?g|png|webp)$/i.test(candidate.name);
@@ -109,7 +110,16 @@ export default function Home() {
       wasResized = result.resized;
       if (wasResized && result.resized) {
         const fromMb = (result.originalSize / 1024 / 1024).toFixed(1);
-        setResizeNotice(`Image resized from ${fromMb} MB to fit the 25 MB upload limit.`);
+        const toMb = (prepared.size / 1024 / 1024).toFixed(1);
+        const origDim = result.originalDim;
+        const newDim = result.newDim;
+        if (origDim && newDim && (origDim.width !== newDim.width || origDim.height !== newDim.height)) {
+          setResizeNotice(
+            `Optimized: Scaled from ${origDim.width}×${origDim.height} (${fromMb} MB) to ${newDim.width}×${newDim.height} (${toMb} MB) for safe inference.`
+          );
+        } else {
+          setResizeNotice(`Image compressed from ${fromMb} MB to ${toMb} MB to fit the 25 MB upload limit.`);
+        }
       }
     } catch (err) {
       setError((err as Error).message);
@@ -133,9 +143,17 @@ export default function Home() {
     if (inputRef.current) inputRef.current.value = "";
   }, []);
 
-  // ── Run detection (optionally forcing past scene block) ───────────────────
+  // ── Run detection (with client-side cooldown & debounce) ────────────────────
   const runDetection = useCallback(async (force = false) => {
     if (!file) return;
+    const now = Date.now();
+    if (now - lastScanTimeRef.current < 1500) {
+      setError("Please wait a moment before starting another scan.");
+      setStatus("error");
+      return;
+    }
+    lastScanTimeRef.current = now;
+
     const modelEntry = health?.models.find((m) => m.id === "yolo26s");
     if (modelEntry && !modelEntry.available) {
       setError(modelEntry.detail ?? "The detection model service is currently connecting or initializing.");
@@ -235,14 +253,14 @@ export default function Home() {
                   <span className="step-badge">01 &nbsp; SOURCE IMAGE</span>
                   <h2>Set the scene</h2>
                 </div>
-                <span className="panel-constraint">JPEG, PNG, WebP · max 25 MB</span>
+                <span className="panel-constraint">JPEG, PNG, WebP · max 25 MB · up to 48 MP (auto-optimized)</span>
               </div>
 
               {/* Compressing spinner */}
               {status === "compressing" && (
                 <div className="result-empty" style={{ minHeight: 160 }}>
                   <LoaderCircle className="spin" size={22} />
-                  <div><h3>Preparing image…</h3><p>Resizing to fit upload limits.</p></div>
+                  <div><h3>Preparing image…</h3><p>Optimizing dimensions &amp; compression for safe inference.</p></div>
                 </div>
               )}
 
@@ -253,7 +271,16 @@ export default function Home() {
                   onClick={() => inputRef.current?.click()}
                   onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                   onDragLeave={() => setDragActive(false)}
-                  onDrop={(e) => { e.preventDefault(); setDragActive(false); void selectFile(e.dataTransfer.files?.[0]); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragActive(false);
+                    const dropped = e.dataTransfer.files;
+                    if (!dropped || dropped.length === 0) return;
+                    if (dropped.length > 1) {
+                      setResizeNotice("Multiple files dropped: Sentinal analyzes one image per inference run. Analyzing the first image.");
+                    }
+                    void selectFile(dropped[0]);
+                  }}
                 >
                   <Upload size={24} />
                   <strong>Drop an image to begin</strong>
