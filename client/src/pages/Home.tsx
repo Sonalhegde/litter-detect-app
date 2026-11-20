@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, FileImage, ImageOff, LoaderCircle, Upload, Waves, X } from "lucide-react";
+import { AlertCircle, FileImage, ImageOff, LoaderCircle, SlidersHorizontal, Sparkles, Upload, Waves, X } from "lucide-react";
 import { Link } from "wouter";
 import { SentinalLogo } from "@/components/SentinalLogo";
 import {
@@ -11,6 +11,7 @@ import {
   maxConfidence,
   prepareImageForUpload,
   requestDetection,
+  type Detection,
   type DetectionApiError,
   type DetectionResponse,
   type HealthResponse,
@@ -57,12 +58,20 @@ export function formatClassLabel(name: string): string {
   return CANONICAL_LABELS[name] ?? name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function DetectionOverlay({ result }: { result: DetectionResponse }) {
-  const classNames = Array.from(new Set(result.detections.map((d) => d.className)));
+function DetectionOverlay({
+  detections,
+  imageSize,
+  highSensitivity = false,
+}: {
+  detections: Detection[];
+  imageSize: { width: number; height: number };
+  highSensitivity?: boolean;
+}) {
+  const classNames = Array.from(new Set(detections.map((d) => d.className)));
   const colorMap = Object.fromEntries(classNames.map((c, i) => [c, classColor(c, i)]));
 
   // Compute scale-adaptive proportions based on native image coordinate space
-  const minDim = Math.min(result.imageSize.width, result.imageSize.height);
+  const minDim = Math.min(imageSize.width, imageSize.height);
   const fontSize = Math.max(14, Math.min(36, Math.round(minDim * 0.024)));
   const badgeHeight = Math.round(fontSize * 1.5);
   const strokeWidth = Math.max(2.5, Math.round(minDim * 0.0035));
@@ -70,22 +79,23 @@ function DetectionOverlay({ result }: { result: DetectionResponse }) {
 
   return (
     <svg
-      aria-label={`${result.count} detection bounding ${result.count === 1 ? "box" : "boxes"}`}
+      aria-label={`${detections.length} detection bounding ${detections.length === 1 ? "box" : "boxes"}`}
       className="detection-overlay"
-      viewBox={`0 0 ${result.imageSize.width} ${result.imageSize.height}`}
+      viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
       preserveAspectRatio="none"
     >
-      {result.detections.map((det) => {
+      {detections.map((det) => {
         const w = det.bbox.x2 - det.bbox.x1;
         const h = det.bbox.y2 - det.bbox.y1;
         const color = colorMap[det.className] ?? "var(--cls-0)";
-        const labelText = `${formatClassLabel(det.className)} · ${formatPercent(det.confidence)}`;
+        const isSubtle = highSensitivity && det.confidence < 0.35;
+        const labelText = `${formatClassLabel(det.className)} · ${formatPercent(det.confidence)}${isSubtle ? " (Subtle)" : ""}`;
         const paddingX = Math.round(fontSize * 0.55);
         const badgeWidth = Math.round(labelText.length * fontSize * 0.58 + paddingX * 2);
 
         // Position badge above bounding box; flip inside if near top boundary
         const badgeY = det.bbox.y1 - badgeHeight >= 4 ? det.bbox.y1 - badgeHeight : det.bbox.y1;
-        const badgeX = Math.max(2, Math.min(det.bbox.x1, result.imageSize.width - badgeWidth - 2));
+        const badgeX = Math.max(2, Math.min(det.bbox.x1, imageSize.width - badgeWidth - 2));
 
         return (
           <g key={det.id}>
@@ -101,6 +111,7 @@ function DetectionOverlay({ result }: { result: DetectionResponse }) {
                 stroke: color,
                 strokeWidth,
                 fill: "transparent",
+                strokeDasharray: isSubtle ? "6,4" : undefined,
               }}
             />
             {/* Semi-transparent frosted glass pill badge */}
@@ -144,6 +155,7 @@ export default function Home() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<DetectionResponse | null>(null);
+  const [sensitivity, setSensitivity] = useState<"standard" | "high">("high");
   const [error, setError] = useState<string | null>(null);
   const [resizeNotice, setResizeNotice] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -267,8 +279,20 @@ export default function Home() {
     }
   }, [file, health, refreshHealth]);
 
-  const meanConf = useMemo(() => averageConfidence(result?.detections ?? []), [result]);
-  const topConf  = useMemo(() => maxConfidence(result?.detections ?? []), [result]);
+  const activeThreshold = sensitivity === "high" ? 0.20 : 0.35;
+
+  const activeDetections = useMemo(() => {
+    if (!result) return [];
+    return result.detections.filter((d) => d.confidence >= activeThreshold);
+  }, [result, activeThreshold]);
+
+  const hiddenCount = useMemo(() => {
+    if (!result || sensitivity === "high") return 0;
+    return result.detections.filter((d) => d.confidence < 0.35 && d.confidence >= 0.20).length;
+  }, [result, sensitivity]);
+
+  const meanConf = useMemo(() => averageConfidence(activeDetections), [activeDetections]);
+  const topConf  = useMemo(() => maxConfidence(activeDetections), [activeDetections]);
 
   const isYolo26mAvailable = Boolean(health?.models.find((m) => m.id === "yolo26m" && m.available));
 
@@ -277,7 +301,7 @@ export default function Home() {
     health ? "Inference service needs attention" :
     "Checking inference service…";
 
-  const classNames = result ? Array.from(new Set(result.detections.map((d) => d.className))) : [];
+  const classNames = Array.from(new Set(activeDetections.map((d) => d.className)));
   const colorMap = Object.fromEntries(classNames.map((c, i) => [c, classColor(c, i)]));
 
   // Soft-warn: scene checker said "warn" but detection ran anyway
@@ -398,6 +422,41 @@ export default function Home() {
                 </span>
               </div>
 
+              {/* Sensitivity & Small Objects Control */}
+              <div className="sensitivity-control">
+                <div className="sensitivity-header">
+                  <span className="sensitivity-title">
+                    <SlidersHorizontal size={14} /> Sensitivity & Small Objects
+                  </span>
+                  <span className="sensitivity-status-pill">
+                    {sensitivity === "high" ? "High (≥20% Threshold)" : "Standard (≥35% Threshold)"}
+                  </span>
+                </div>
+                <div className="sensitivity-toggle-group">
+                  <button
+                    type="button"
+                    className={`sensitivity-btn ${sensitivity === "standard" ? "sensitivity-btn--active" : ""}`}
+                    onClick={() => setSensitivity("standard")}
+                  >
+                    <strong>Standard</strong>
+                    <small>Prominent litter (≥35%)</small>
+                  </button>
+                  <button
+                    type="button"
+                    className={`sensitivity-btn ${sensitivity === "high" ? "sensitivity-btn--active" : ""}`}
+                    onClick={() => setSensitivity("high")}
+                  >
+                    <strong>High Sensitivity</strong>
+                    <small>Small caps & micro-debris (≥20%)</small>
+                  </button>
+                </div>
+                <p className="sensitivity-hint">
+                  {sensitivity === "high"
+                    ? "🔍 High Sensitivity is ON: Detects small bottle caps, lids, and subtle litter that blend into pebbles and sand."
+                    : "Standard mode focuses on large, obvious debris. Switch to High Sensitivity if small objects are missed."}
+                </p>
+              </div>
+
               <div className="btn-row">
                 <button
                   type="button"
@@ -445,7 +504,7 @@ export default function Home() {
                   <span className="step-badge">02 &nbsp; DETECTION REVIEW</span>
                   <h2>
                     {status === "complete" && result
-                      ? result.count > 0 ? "Read the findings" : "No litter found"
+                      ? activeDetections.length > 0 ? "Read the findings" : "No litter found"
                       : status === "off-topic"
                       ? "Not a coastal scene"
                       : "Read the findings"}
@@ -535,7 +594,11 @@ export default function Home() {
 
                   <div className="annotated-wrap">
                     <img src={previewUrl!} alt="Uploaded scene" />
-                    <DetectionOverlay result={result} />
+                    <DetectionOverlay
+                      detections={activeDetections}
+                      imageSize={result.imageSize}
+                      highSensitivity={sensitivity === "high"}
+                    />
                   </div>
 
                   {/* Active model banner */}
@@ -566,10 +629,23 @@ export default function Home() {
                     </p>
                   )}
 
+                  {/* Hidden small objects banner */}
+                  {hiddenCount > 0 && (
+                    <div className="hidden-debris-banner">
+                      <span>
+                        <Sparkles size={14} />
+                        {hiddenCount} small or subtle {hiddenCount === 1 ? "item" : "items"} hidden by Standard filter
+                      </span>
+                      <button type="button" onClick={() => setSensitivity("high")}>
+                        Show Small Items
+                      </button>
+                    </div>
+                  )}
+
                   <div className="result-stats">
                     <div className="stat-tile">
-                      <strong>{result.count}</strong>
-                      <span>{result.count === 1 ? "item" : "items"} detected</span>
+                      <strong>{activeDetections.length}</strong>
+                      <span>{activeDetections.length === 1 ? "item" : "items"} detected</span>
                     </div>
                     <div className="stat-tile">
                       <strong>{formatPercent(topConf)}</strong>
@@ -577,9 +653,9 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {result.detections.length > 0 ? (
+                  {activeDetections.length > 0 ? (
                     <ol className="detection-list">
-                      {[...result.detections]
+                      {[...activeDetections]
                         .sort((a, b) => b.confidence - a.confidence)
                         .map((det) => (
                           <li key={det.id}>
@@ -589,6 +665,9 @@ export default function Home() {
                                 style={{ background: colorMap[det.className] ?? "var(--cls-0)" }}
                               />
                               {formatClassLabel(det.className)}
+                              {sensitivity === "high" && det.confidence < 0.35 && (
+                                <span className="small-object-tag">Small / Subtle</span>
+                              )}
                             </span>
                             <span className="det-confidence">{formatPercent(det.confidence)}</span>
                           </li>
@@ -598,9 +677,20 @@ export default function Home() {
                     <div className="no-detections">
                       <strong>No marine debris detected.</strong>
                       <p>
-                        No object crossed the confidence threshold. This does not rule out debris
-                        the model was uncertain about.
+                        {sensitivity === "standard" && hiddenCount > 0
+                          ? `${hiddenCount} item(s) are below the 35% threshold. Switch to High Sensitivity to view them.`
+                          : "No object crossed the confidence threshold. This does not rule out debris the model was uncertain about."}
                       </p>
+                      {sensitivity === "standard" && hiddenCount > 0 && (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{ marginTop: "10px", width: "100%", fontSize: "0.8125rem", padding: "7px 12px" }}
+                          onClick={() => setSensitivity("high")}
+                        >
+                          Switch to High Sensitivity
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -609,7 +699,8 @@ export default function Home() {
                     <p>
                       {result.modelLabel} · {result.runtime.device.toUpperCase()} ·{" "}
                       {formatDuration(result.inferenceTimeSec)} · input {result.runtime.inputSize}px ·
-                      mean {formatPercent(meanConf)} · threshold{" "}
+                      mode {sensitivity} ({formatPercent(activeThreshold)}) ·
+                      mean {formatPercent(meanConf)} · backend threshold{" "}
                       {formatPercent(result.runtime.confidenceThreshold)} · scene score{" "}
                       {formatPercent(result.sceneRelevance.score)}
                     </p>
@@ -632,7 +723,7 @@ export default function Home() {
           <span>Release {RELEASE_SHA}</span>
         </div>
         <div className="page-width footer-update">
-          LAST UPDATE - 20 Nov 2026 19:15 GST · Production YOLO26m Active
+          LAST UPDATE - 20 Nov 2026 20:15 GST · Production YOLO26m Active
         </div>
       </footer>
     </div>

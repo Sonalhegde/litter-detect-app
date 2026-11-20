@@ -286,6 +286,143 @@ main { flex: 1; }
 }
 .model-note strong { color: var(--text); }
 
+/* ─── Sensitivity control ─────────────────────────────────────────────────── */
+.sensitivity-control {
+  margin: 14px 0 18px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.sensitivity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sensitivity-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.sensitivity-status-pill {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+.sensitivity-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: var(--surface);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.sensitivity-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2);
+  text-align: center;
+  transition: all 0.15s ease;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.sensitivity-btn strong {
+  font-size: 0.8125rem;
+  line-height: 1.2;
+}
+.sensitivity-btn small {
+  font-size: 0.6875rem;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.sensitivity-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+.sensitivity-btn--active {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.sensitivity-btn--active strong {
+  color: #ffffff;
+}
+.sensitivity-btn--active small {
+  color: rgba(255, 255, 255, 0.9);
+}
+.sensitivity-hint {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin-top: 8px;
+  margin-bottom: 0;
+  line-height: 1.4;
+}
+
+/* ─── Hidden debris alert banner ─────────────────────────────────────────── */
+.hidden-debris-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 10px 0;
+  border-radius: var(--radius-sm);
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  font-size: 0.8125rem;
+  color: #06b6d4;
+}
+.hidden-debris-banner span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.hidden-debris-banner button {
+  padding: 4px 10px;
+  background: #06b6d4;
+  color: #0b1120;
+  border: 0;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.hidden-debris-banner button:hover {
+  background: #22d3ee;
+}
+
+/* ─── Small Object Tag in list ───────────────────────────────────────────── */
+.small-object-tag {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(6, 182, 212, 0.16);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.28);
+  margin-left: 6px;
+  letter-spacing: 0.02em;
+}
+
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 .btn-row { display: flex; gap: 10px; }
 .btn-primary {
