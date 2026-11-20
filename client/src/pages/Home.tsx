@@ -33,9 +33,41 @@ function classColor(className: string, index: number) {
   return CLASS_COLORS[Math.abs(h) % CLASS_COLORS.length] ?? CLASS_COLORS[index % CLASS_COLORS.length];
 }
 
+const CANONICAL_LABELS: Record<string, string> = {
+  plastic_bottle: "Plastic Bottle",
+  bottle_cap_lid: "Bottle Cap",
+  plastic_bag: "Plastic Bag",
+  food_wrapper: "Food Wrapper",
+  plastic_container: "Plastic Container",
+  can_metal: "Metal Can",
+  fishing_net: "Fishing Net",
+  rope_line: "Rope / Line",
+  styrofoam: "Styrofoam",
+  glass_bottle: "Glass Bottle",
+  plastic: "Plastic",
+  metal: "Metal",
+  glass: "Glass",
+  paper_cardboard: "Paper / Cardboard",
+  fishing_gear: "Fishing Gear",
+  natural_debris: "Natural Debris",
+  other_litter: "Other Litter",
+};
+
+export function formatClassLabel(name: string): string {
+  return CANONICAL_LABELS[name] ?? name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function DetectionOverlay({ result }: { result: DetectionResponse }) {
   const classNames = Array.from(new Set(result.detections.map((d) => d.className)));
   const colorMap = Object.fromEntries(classNames.map((c, i) => [c, classColor(c, i)]));
+
+  // Compute scale-adaptive proportions based on native image coordinate space
+  const minDim = Math.min(result.imageSize.width, result.imageSize.height);
+  const fontSize = Math.max(14, Math.min(36, Math.round(minDim * 0.024)));
+  const badgeHeight = Math.round(fontSize * 1.5);
+  const strokeWidth = Math.max(2.5, Math.round(minDim * 0.0035));
+  const cornerRadius = Math.max(3, Math.round(minDim * 0.006));
+
   return (
     <svg
       aria-label={`${result.count} detection bounding ${result.count === 1 ? "box" : "boxes"}`}
@@ -47,15 +79,53 @@ function DetectionOverlay({ result }: { result: DetectionResponse }) {
         const w = det.bbox.x2 - det.bbox.x1;
         const h = det.bbox.y2 - det.bbox.y1;
         const color = colorMap[det.className] ?? "var(--cls-0)";
+        const labelText = `${formatClassLabel(det.className)} · ${formatPercent(det.confidence)}`;
+        const paddingX = Math.round(fontSize * 0.55);
+        const badgeWidth = Math.round(labelText.length * fontSize * 0.58 + paddingX * 2);
+
+        // Position badge above bounding box; flip inside if near top boundary
+        const badgeY = det.bbox.y1 - badgeHeight >= 4 ? det.bbox.y1 - badgeHeight : det.bbox.y1;
+        const badgeX = Math.max(2, Math.min(det.bbox.x1, result.imageSize.width - badgeWidth - 2));
+
         return (
           <g key={det.id}>
+            {/* Crisp bounding box with subtle translucent fill and shadow */}
             <rect
               className="det-box"
-              x={det.bbox.x1} y={det.bbox.y1} width={w} height={h} rx="3"
-              style={{ stroke: color }}
+              x={det.bbox.x1}
+              y={det.bbox.y1}
+              width={w}
+              height={h}
+              rx={cornerRadius}
+              style={{
+                stroke: color,
+                strokeWidth,
+                fill: `${color}18`,
+              }}
             />
-            <text className="det-label" x={det.bbox.x1 + 5} y={Math.max(15, det.bbox.y1 - 6)}>
-              {det.className} {formatPercent(det.confidence)}
+            {/* High-contrast solid dark pill behind text */}
+            <rect
+              className="det-badge"
+              x={badgeX}
+              y={badgeY}
+              width={badgeWidth}
+              height={badgeHeight}
+              rx={Math.round(badgeHeight * 0.25)}
+              fill="#0b132b"
+              stroke={color}
+              strokeWidth={Math.max(1.5, strokeWidth * 0.6)}
+            />
+            {/* Bold, sharp white label text centered in pill */}
+            <text
+              className="det-label"
+              x={badgeX + paddingX}
+              y={badgeY + badgeHeight * 0.72}
+              style={{
+                fontSize: `${fontSize}px`,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {labelText}
             </text>
           </g>
         );
@@ -198,6 +268,8 @@ export default function Home() {
   const meanConf = useMemo(() => averageConfidence(result?.detections ?? []), [result]);
   const topConf  = useMemo(() => maxConfidence(result?.detections ?? []), [result]);
 
+  const isYolo26mAvailable = Boolean(health?.models.find((m) => m.id === "yolo26m" && m.available));
+
   const serviceLabel =
     health?.status === "healthy" ? "Inference service available" :
     health ? "Inference service needs attention" :
@@ -317,7 +389,11 @@ export default function Home() {
 
               <div className="model-note">
                 <strong>Model</strong>
-                <span>Sentinal YOLO26m · 10-Class Marine Debris Detector (960/1280px)</span>
+                <span>
+                  {isYolo26mAvailable
+                    ? "Sentinal YOLO26m · 10-Class Marine Debris Detector (960px)"
+                    : "Sentinal YOLO26s (Baseline 7-Class) · Redeploy Cloud Run to activate 10-Class YOLO26m"}
+                </span>
               </div>
 
               <div className="btn-row">
